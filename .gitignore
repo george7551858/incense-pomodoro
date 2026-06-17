@@ -1,0 +1,12 @@
+# 作業系統
+.DS_Store
+Thumbs.db
+
+# 編輯器 / IDE
+.vscode/
+.idea/
+*.swp
+
+# 日誌與暫存
+*.log
+tmp/
