@@ -204,18 +204,35 @@
     return { full, len, tipY: baseY - len };
   }
 
-  function drawHolder() {
+  function drawHolder(night) {
     // 香插:一只低淺的沙缽
     const w = Math.min(W * 0.18, 150);
     const h = 18;
     const y = baseY;
     ctx.save();
-    // 缽影
+    // 缽影:柔邊接地影。夜間背景偏黑,須改用黑色加深才看得見(原暖褐比夜底更亮 → 等於消失)
     ctx.globalCompositeOperation = "source-over";
+    const sy = y + h * 1.0;
+    const rx = w * 0.62;
+    const ry = h * 1.0;
+    ctx.save();
+    ctx.translate(cx, sy);
+    ctx.scale(1, ry / rx);
+    const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    if (night) {
+      sg.addColorStop(0, "rgba(0,0,0,0.6)");
+      sg.addColorStop(0.55, "rgba(0,0,0,0.34)");
+      sg.addColorStop(1, "rgba(0,0,0,0)");
+    } else {
+      sg.addColorStop(0, "rgba(60,48,28,0.2)");
+      sg.addColorStop(0.55, "rgba(60,48,28,0.1)");
+      sg.addColorStop(1, "rgba(60,48,28,0)");
+    }
+    ctx.fillStyle = sg;
     ctx.beginPath();
-    ctx.ellipse(cx, y + h * 0.55, w * 0.5, h * 0.7, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(60,48,28,0.10)";
+    ctx.arc(0, 0, rx, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
     // 缽身
     const grad = ctx.createLinearGradient(cx - w/2, y, cx + w/2, y);
     grad.addColorStop(0, "#b9a988");
@@ -354,7 +371,7 @@
   // }
   function render(view) {
     ctx.clearRect(0, 0, W, H);
-    drawHolder();
+    drawHolder(view.theme === "night");
 
     const { tipY } = currentStick(view.lenScale, view.frac);
     if (view.emitting) {

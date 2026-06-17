@@ -17,6 +17,11 @@
     --ink-faint: rgba(70, 64, 47, 0.32);
     --hair: rgba(70, 64, 47, 0.16);
     --serif: "Noto Serif TC", "Songti TC", "Songti SC", "STSong", serif;
+    /* sunlit 晝夜轉場曲線 */
+    --timing-fn: cubic-bezier(0.455, 0.190, 0.000, 0.985);
+    /* 窗光:暖陽(晝) */
+    --bounce-light: #f5d7a6;
+    --blind-shadow: rgba(70, 55, 28, 0.55);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -33,11 +38,23 @@
   }
 
   /* 宣紙底:暖色徑向漸層 + 角落暈影 */
+  /* 把漸層三色註冊為 <color> 型別屬性,使顏色插值平滑、不跳色 */
+  @property --bg-c0 { syntax: "<color>"; inherits: false; initial-value: #efe7d6; }
+  @property --bg-c1 { syntax: "<color>"; inherits: false; initial-value: #e7dcc6; }
+  @property --bg-c2 { syntax: "<color>"; inherits: false; initial-value: #ddd0b6; }
   #stage {
     position: fixed;
     inset: 0;
+    --bg-c0: #efe7d6;
+    --bg-c1: #e7dcc6;
+    --bg-c2: #ddd0b6;
     background:
-      radial-gradient(120% 90% at 50% 36%, var(--paper-0) 0%, var(--paper-1) 52%, var(--paper-2) 100%);
+      radial-gradient(120% 92% at 50% 38%, var(--bg-c0) 0%, var(--bg-c1) 50%, var(--bg-c2) 100%);
+    /* 未播放動畫時:直接過渡顏色變數,確保任何情境都平滑 */
+    transition: --bg-c0 1.2s var(--timing-fn), --bg-c1 1.2s var(--timing-fn), --bg-c2 1.2s var(--timing-fn);
+    animation-duration: 0s;
+    animation-fill-mode: forwards;
+    animation-timing-function: linear;
   }
 
   /* 紙纖維紋理(SVG feTurbulence) */
@@ -49,6 +66,7 @@
     opacity: 0.5;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
     background-size: 220px 220px;
+    transition: opacity 1.6s var(--timing-fn);
   }
 
   /* 角落柔暈,聚焦中央 */
@@ -57,6 +75,158 @@
     inset: 0;
     pointer-events: none;
     background: radial-gradient(115% 80% at 50% 42%, rgba(0,0,0,0) 55%, rgba(60,48,28,0.10) 80%, rgba(48,38,22,0.22) 100%);
+    transition: background 1.6s var(--timing-fn);
+  }
+
+  /* ===== sunlit 窗光斑駁特效 ===== */
+  #sunlight {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  #sunlight .glow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(309deg, var(--bounce-light), var(--bounce-light) 20%, transparent);
+    opacity: 0.42;
+    mix-blend-mode: soft-light;
+    transition: background 1.6s var(--timing-fn), opacity 1.6s var(--timing-fn);
+  }
+  #sunlight .glow-bounce {
+    position: absolute;
+    inset: 0;
+    bottom: 0;
+    background: linear-gradient(355deg, var(--bounce-light) 0%, transparent 30%, transparent 100%);
+    opacity: 0.4;
+    mix-blend-mode: soft-light;
+    transition: background 1.6s var(--timing-fn), opacity 1.6s var(--timing-fn);
+  }
+  #sunlight .perspective {
+    position: absolute;
+    top: -30vh;
+    right: 0;
+    width: 80vw;
+    height: 130vh;
+    opacity: 0.10;
+    background-blend-mode: darken;
+    transform-origin: top right;
+    transform-style: preserve-3d;
+    transition: transform 1.7s var(--timing-fn), opacity 3s ease;
+    transform: matrix3d(0.7500, -0.0625, 0.0000, 0.0008,
+        0.0000, 1.0000, 0.0000, 0.0000,
+        0.0000, 0.0000, 1.0000, 0.0000,
+        0.0000, 0.0000, 0.0000, 1.0000);
+    /* 左側漸隱,與背景無縫銜接 */
+    -webkit-mask-image: linear-gradient(252deg, transparent 0%, transparent 36%, black 78%, black 100%);
+    mask-image: linear-gradient(252deg, transparent 0%, transparent 36%, black 78%, black 100%);
+  }
+  #sunlight .leaves {
+    position: absolute;
+    bottom: -20px;
+    right: -700px;
+    width: 1600px;
+    height: 1400px;
+    background-image: url("./leaves.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+    filter: url(#wind);
+    animation: billow 8s ease-in-out infinite;
+  }
+  #sunlight .blinds { position: relative; width: 100%; }
+  #sunlight .shutter,
+  #sunlight .bar { background-color: var(--blind-shadow); }
+  #sunlight .shutters {
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    gap: 58px;
+    transition: gap 1.6s var(--timing-fn);
+  }
+  #sunlight .vertical {
+    top: 0;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+  }
+  #sunlight .vertical > .bar { width: 5px; height: 100%; }
+  #sunlight .shutter {
+    width: 100%;
+    height: 38px;
+    transition: height 1.6s var(--timing-fn);
+  }
+
+  /* sunlit:分層 backdrop-filter 模糊百葉邊緣,左側 mask 漸隱 */
+  #sunlight .progressive-blur {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+  }
+  #sunlight .progressive-blur > div {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+    backdrop-filter: blur(var(--blur-amount));
+    -webkit-backdrop-filter: blur(var(--blur-amount));
+    -webkit-mask-image: linear-gradient(252deg, transparent, transparent var(--stop1), black var(--stop2), black);
+    mask-image: linear-gradient(252deg, transparent, transparent var(--stop1), black var(--stop2), black);
+  }
+  #sunlight .progressive-blur > div:nth-child(1) {
+    --blur-amount: 6px;
+    --stop1: 0%;
+    --stop2: 0%;
+  }
+  #sunlight .progressive-blur > div:nth-child(2) {
+    --blur-amount: 12px;
+    --stop1: 40%;
+    --stop2: 80%;
+  }
+  #sunlight .progressive-blur > div:nth-child(3) {
+    --blur-amount: 48px;
+    --stop1: 40%;
+    --stop2: 70%;
+  }
+  #sunlight .progressive-blur > div:nth-child(4) {
+    --blur-amount: 96px;
+    --stop1: 70%;
+    --stop2: 80%;
+  }
+
+  /* sunlit 風格:背景日出 / 日落漸變(只動畫顏色變數 → 平滑不跳色) */
+  @keyframes theme-sunrise {
+    0%   { --bg-c0: #1a1b21; --bg-c1: #101117; --bg-c2: #06070a; }
+    10%  { --bg-c0: #1e1a2e; --bg-c1: #16132b; --bg-c2: #0e0c18; }
+    35%  { --bg-c0: #b8c8d0; --bg-c1: #9fb3bf; --bg-c2: #8aa0ad; }
+    100% { --bg-c0: #efe7d6; --bg-c1: #e7dcc6; --bg-c2: #ddd0b6; }
+  }
+  @keyframes theme-sunset {
+    0%   { --bg-c0: #efe7d6; --bg-c1: #e7dcc6; --bg-c2: #ddd0b6; }
+    30%  { --bg-c0: #fde8b8; --bg-c1: #fccc83; --bg-c2: #e8b86a; }
+    60%  { --bg-c0: #e8924a; --bg-c1: #db7a2a; --bg-c2: #b85a18; }
+    90%  { --bg-c0: #1e1a2e; --bg-c1: #16132b; --bg-c2: #0e0c18; }
+    100% { --bg-c0: #1a1b21; --bg-c1: #101117; --bg-c2: #06070a; }
+  }
+  body.theme-animate-ready #stage {
+    animation-play-state: running;
+    animation-duration: 1s;
+    animation-name: theme-sunrise;
+  }
+  body.theme-animate-ready[data-theme="night"] #stage {
+    animation-duration: 1.7s;
+    animation-name: theme-sunset;
+  }
+
+  @keyframes billow {
+    0%   { transform: perspective(400px) rotateX(0deg) rotateY(0deg) scale(1); }
+    25%  { transform: perspective(400px) rotateX(1deg) rotateY(2deg) scale(1.02); }
+    50%  { transform: perspective(400px) rotateX(-4deg) rotateY(-2deg) scale(0.97); }
+    75%  { transform: perspective(400px) rotateX(1deg) rotateY(-1deg) scale(1.04); }
+    100% { transform: perspective(400px) rotateX(0deg) rotateY(0deg) scale(1); }
   }
 
   canvas#scene {
@@ -336,7 +506,9 @@
     --hair: rgba(236, 231, 217, 0.16);
   }
   body[data-theme="night"] #stage {
-    background: radial-gradient(120% 95% at 50% 40%, #1a1b21 0%, #101117 48%, #06070a 100%);
+    --bg-c0: #1a1b21;
+    --bg-c1: #101117;
+    --bg-c2: #06070a;
   }
   body[data-theme="night"] #grain { opacity: 0.16; mix-blend-mode: overlay; }
   body[data-theme="night"] #vignette {
@@ -350,6 +522,28 @@
   body[data-theme="night"] #timeToggle.on { background: rgba(255, 255, 255, 0.16); color: #f3eee2; }
   body[data-theme="night"] #timeToggle.pomo { background: rgba(255, 255, 255, 0.16); color: #e8634f; }
 
+  /* 夜:窗光轉為清冷月光,百葉陰影更深更寬 */
+  body[data-theme="night"] {
+    --bounce-light: #2a3d63;
+    --blind-shadow: rgba(2, 4, 10, 0.7);
+  }
+  body[data-theme="night"] #sunlight .glow { opacity: 0.5; mix-blend-mode: screen; }
+  body[data-theme="night"] #sunlight .glow-bounce { opacity: 0.45; mix-blend-mode: screen; }
+  body[data-theme="night"] #sunlight .perspective {
+    opacity: 0.34;
+    transform: matrix3d(0.8333, 0.0833, 0.0000, 0.0003,
+        0.0000, 1.0000, 0.0000, 0.0000,
+        0.0000, 0.0000, 1.0000, 0.0000,
+        0.0000, 0.0000, 0.0000, 1.0000);
+  }
+  body[data-theme="night"] #sunlight .shutters { gap: 22px; }
+  body[data-theme="night"] #sunlight .shutter { height: 74px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #sunlight .leaves { animation: none; }
+    body.theme-animate-ready #stage { animation: none !important; }
+  }
+
   @media (max-width: 560px) {
     .preset { padding: 8px 13px; font-size: 13px; }
     .actions { gap: 20px; }
@@ -360,6 +554,53 @@
 </head>
 <body>
   <div id="stage"></div>
+
+  <!-- sunlit 風格:陽光透過百葉窗與樹影斑駁灑落(隨晝夜切換) -->
+  <div id="sunlight">
+    <div class="glow"></div>
+    <div class="glow-bounce"></div>
+    <div class="perspective">
+      <div class="leaves">
+        <svg style="width:0;height:0;position:absolute;">
+          <defs>
+            <filter id="wind" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" numOctaves="2" seed="1">
+                <animate attributeName="baseFrequency" dur="16s" keyTimes="0;0.33;0.66;1"
+                  values="0.005 0.003;0.01 0.009;0.008 0.004;0.005 0.003" repeatCount="indefinite" />
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic">
+                <animate attributeName="scale" dur="20s" keyTimes="0;0.25;0.5;0.75;1"
+                  values="45;55;75;55;45" repeatCount="indefinite" />
+              </feDisplacementMap>
+            </filter>
+          </defs>
+        </svg>
+      </div>
+      <div class="blinds">
+        <div class="shutters">
+          <div class="shutter"></div><div class="shutter"></div><div class="shutter"></div>
+          <div class="shutter"></div><div class="shutter"></div><div class="shutter"></div>
+          <div class="shutter"></div><div class="shutter"></div><div class="shutter"></div>
+          <div class="shutter"></div><div class="shutter"></div><div class="shutter"></div>
+          <div class="shutter"></div><div class="shutter"></div><div class="shutter"></div>
+          <div class="shutter"></div><div class="shutter"></div><div class="shutter"></div>
+          <div class="shutter"></div><div class="shutter"></div><div class="shutter"></div>
+          <div class="shutter"></div><div class="shutter"></div>
+        </div>
+        <div class="vertical">
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+      </div>
+    </div>
+    <div class="progressive-blur">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+
   <canvas id="scene"></canvas>
   <div id="grain"></div>
   <div id="vignette"></div>
@@ -548,10 +789,16 @@
   const MOON = '<path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>';
   const SUN = '<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M12 3.2v2M12 18.8v2M3.2 12h2M18.8 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>';
 
-  function applyTheme() {
+  function applyTheme(animate) {
     document.body.setAttribute("data-theme", state.theme);
-    // 圖示顯示「可切往的目標」
     elThemeIcon.innerHTML = state.theme === "night" ? SUN : MOON;
+    if (animate) {
+      const stage = document.getElementById("stage");
+      stage.style.animation = "none";
+      void stage.offsetWidth; // 強制重啟 keyframe
+      stage.style.animation = "";
+      document.body.classList.add("theme-animate-ready");
+    }
   }
 
   const ICON_CLOCK = '<circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.3"/><path d="M12 7.6V12l3 1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>';
@@ -768,7 +1015,7 @@
 
   elThemeToggle.addEventListener("click", () => {
     state.theme = state.theme === "night" ? "paper" : "night";
-    applyTheme();
+    applyTheme(true);
     save();
   });
 

@@ -4,6 +4,8 @@
 
 整個 App 是單一檔案 `index.html`，純前端、無需建置、無外部相依（字型透過 Google Fonts 載入），開啟即用。
 
+晝 / 夜的窗光特效靈感來自 https://sunlit.pages.dev/。
+
 ## 功能
 
 - **線香視覺**：以 Canvas 繪製線香燃燒、煙縷與灰燼，香盡即代表時段結束。

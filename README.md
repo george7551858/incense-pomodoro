@@ -4,6 +4,8 @@ A minimalist focus timer built around the imagery of a burning incense stick. Li
 
 The entire app is a single file, `index.html` — pure front-end, no build step, and no external dependencies (fonts are loaded from Google Fonts). Just open it and go.
 
+The day/night sunlight effect is inspired by https://sunlit.pages.dev/.
+
 > 中文說明請見 [README_zh.md](README_zh.md)。
 
 ## Features
