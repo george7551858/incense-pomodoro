@@ -1,5 +1,5 @@
-/* 一炷香 · 蕃茄鐘 — Service Worker (offline-first) */
-const VERSION = "incense-pomodoro-v1";
+/* Incense Pomodoro — Service Worker (offline-first) */
+const VERSION = "incense-pomodoro-20260618T082415Z";
 const CORE = [
   ".",
   "index.html",

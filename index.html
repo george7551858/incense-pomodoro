@@ -32,9 +32,9 @@
     --ink-faint: rgba(70, 64, 47, 0.32);
     --hair: rgba(70, 64, 47, 0.16);
     --serif: "Noto Serif TC", "Songti TC", "Songti SC", "STSong", serif;
-    /* sunlit 晝夜轉場曲線 */
+    /* sunlit day/night transition curve */
     --timing-fn: cubic-bezier(0.455, 0.190, 0.000, 0.985);
-    /* 窗光:暖陽(晝) */
+    /* Window light: warm sun (day) */
     --bounce-light: #f5d7a6;
     --blind-shadow: rgba(70, 55, 28, 0.55);
   }
@@ -52,8 +52,8 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* 宣紙底:暖色徑向漸層 + 角落暈影 */
-  /* 把漸層三色註冊為 <color> 型別屬性,使顏色插值平滑、不跳色 */
+  /* Paper background: warm radial gradient + corner vignette */
+  /* Register the three gradient colors as <color> typed properties so color interpolation is smooth and does not band */
   @property --bg-c0 { syntax: "<color>"; inherits: false; initial-value: #efe7d6; }
   @property --bg-c1 { syntax: "<color>"; inherits: false; initial-value: #e7dcc6; }
   @property --bg-c2 { syntax: "<color>"; inherits: false; initial-value: #ddd0b6; }
@@ -65,14 +65,14 @@
     --bg-c2: #ddd0b6;
     background:
       radial-gradient(120% 92% at 50% 38%, var(--bg-c0) 0%, var(--bg-c1) 50%, var(--bg-c2) 100%);
-    /* 未播放動畫時:直接過渡顏色變數,確保任何情境都平滑 */
+    /* When no animation is playing: transition the color variables directly so it stays smooth in any case */
     transition: --bg-c0 1.2s var(--timing-fn), --bg-c1 1.2s var(--timing-fn), --bg-c2 1.2s var(--timing-fn);
     animation-duration: 0s;
     animation-fill-mode: forwards;
     animation-timing-function: linear;
   }
 
-  /* 紙纖維紋理(SVG feTurbulence) */
+  /* Paper fiber texture (SVG feTurbulence) */
   #grain {
     position: fixed;
     inset: 0;
@@ -84,7 +84,7 @@
     transition: opacity 1.6s var(--timing-fn);
   }
 
-  /* 角落柔暈,聚焦中央 */
+  /* Soft corner vignette to focus the center */
   #vignette {
     position: fixed;
     inset: 0;
@@ -93,7 +93,7 @@
     transition: background 1.6s var(--timing-fn);
   }
 
-  /* ===== sunlit 窗光斑駁特效 ===== */
+  /* ===== sunlit dappled window-light effect ===== */
   #sunlight {
     position: fixed;
     inset: 0;
@@ -132,7 +132,7 @@
         0.0000, 1.0000, 0.0000, 0.0000,
         0.0000, 0.0000, 1.0000, 0.0000,
         0.0000, 0.0000, 0.0000, 1.0000);
-    /* 左側漸隱,與背景無縫銜接 */
+    /* Fade out on the left to blend seamlessly into the background */
     -webkit-mask-image: linear-gradient(252deg, transparent 0%, transparent 36%, black 78%, black 100%);
     mask-image: linear-gradient(252deg, transparent 0%, transparent 36%, black 78%, black 100%);
   }
@@ -173,7 +173,7 @@
     transition: height 1.6s var(--timing-fn);
   }
 
-  /* sunlit:分層 backdrop-filter 模糊百葉邊緣,左側 mask 漸隱 */
+  /* sunlit: layered backdrop-filter blurs the blind edges, left side masked to fade out */
   #sunlight .progressive-blur {
     position: absolute;
     inset: 0;
@@ -212,7 +212,7 @@
     --stop2: 80%;
   }
 
-  /* sunlit 風格:背景日出 / 日落漸變(只動畫顏色變數 → 平滑不跳色) */
+  /* sunlit style: background sunrise / sunset gradient (only animate color variables -> smooth, no banding) */
   @keyframes theme-sunrise {
     0%   { --bg-c0: #1a1b21; --bg-c1: #101117; --bg-c2: #06070a; }
     10%  { --bg-c0: #1e1a2e; --bg-c1: #16132b; --bg-c2: #0e0c18; }
@@ -252,7 +252,7 @@
     display: block;
   }
 
-  /* 計時讀數(預設隱藏,按蕃茄鐘鈕才顯示) */
+  /* Timer readout (hidden by default, shown only when the pomodoro button is pressed) */
   #readout {
     position: fixed;
     top: 13%;
@@ -286,7 +286,7 @@
     transition: opacity 0.8s ease;
   }
 
-  /* 控制列 */
+  /* Control bar */
   #controls {
     position: fixed;
     bottom: 0;
@@ -316,7 +316,7 @@
     transition: opacity 0.55s ease, max-height 0.55s ease,
                 padding 0.55s ease, margin 0.55s ease, border-color 0.55s ease;
   }
-  /* 點燃後收起選香鈕 */
+  /* Collapse the incense picker after lighting */
   .presets.gone {
     opacity: 0;
     max-height: 0;
@@ -395,7 +395,7 @@
   #ignite:hover { transform: translateY(-2px); background: rgba(255,250,240,0.78); }
   #ignite svg { width: 24px; height: 24px; }
 
-  /* 右上:蕃茄鐘鈕(顯示/隱藏時間) */
+  /* Top-right: pomodoro button (show/hide time) */
   #timeToggle {
     position: fixed;
     top: 22px;
@@ -415,13 +415,13 @@
   }
   #timeToggle:hover { background: rgba(255, 250, 240, 0.78); transform: translateY(-1px); }
   #timeToggle.on { color: #3a3322; background: rgba(255, 250, 240, 0.85); box-shadow: 0 1px 3px rgba(60,48,28,0.12); }
-  /* 蕃茄鐘:亮底(同顯示時間)+ 線條紅 */
+  /* Pomodoro: bright background (same as show-time) + red outline */
   #timeToggle.pomo { color: #c0392b; background: rgba(255, 250, 240, 0.85); box-shadow: 0 1px 3px rgba(60,48,28,0.12); }
-  /* hover 預覽下一階段時略降透明,提示這是「預覽」 */
+  /* On hover preview of the next stage, slightly lower opacity to hint this is a "preview" */
   #timeToggle.preview svg { opacity: 0.6; }
   #timeToggle svg { width: 21px; height: 21px; transition: opacity 0.2s ease; }
 
-  /* 已燃香計數(隨時間一同顯示) */
+  /* Burned-incense count (shown together with the time) */
   #tally {
     position: fixed;
     top: 34px;
@@ -446,7 +446,7 @@
     background: var(--ink-faint);
   }
 
-  /* 圓滿提示 */
+  /* Completion notice */
   #done {
     position: fixed;
     top: 13%;
@@ -489,7 +489,7 @@
     transition: opacity 0.8s ease;
   }
 
-  /* 左下:夜 / 晝 切換 */
+  /* Bottom-left: night / day toggle */
   #themeToggle {
     position: fixed;
     left: 24px;
@@ -510,7 +510,7 @@
   #themeToggle:hover { color: var(--ink); transform: translateY(-1px); }
   #themeToggle svg { width: 19px; height: 19px; }
 
-  /* ===== 夜主題 ===== */
+  /* ===== Night theme ===== */
   body[data-theme="night"] {
     --paper-0: #16171c;
     --paper-1: #101117;
@@ -537,7 +537,7 @@
   body[data-theme="night"] #timeToggle.on { background: rgba(255, 255, 255, 0.16); color: #f3eee2; }
   body[data-theme="night"] #timeToggle.pomo { background: rgba(255, 255, 255, 0.16); color: #e8634f; }
 
-  /* 夜:窗光轉為清冷月光,百葉陰影更深更寬 */
+  /* Night: window light becomes cool moonlight, blind shadows deeper and wider */
   body[data-theme="night"] {
     --bounce-light: #2a3d63;
     --blind-shadow: rgba(2, 4, 10, 0.7);
@@ -554,8 +554,10 @@
   body[data-theme="night"] #sunlight .shutters { gap: 22px; }
   body[data-theme="night"] #sunlight .shutter { height: 74px; }
 
-  /* 窄/直式螢幕:252deg 遮罩在橫向才有足夠跨距漸隱,窄螢幕轉場被壓縮成左側可見硬邊。
-     加寬 perspective、放寬遮罩轉場與柔化模糊,讓窗光從右上斜射後平順溶入背景 */
+  /* Narrow/portrait screens: the 252deg mask only has enough span to fade out in landscape;
+     on narrow screens the transition gets compressed into a hard visible edge on the left.
+     Widen the perspective, loosen the mask transition, and soften the blur so the window light
+     casts in from the top-right and dissolves smoothly into the background */
   @media (max-width: 1280px) {
     #sunlight .perspective {
       width: 120vw;
@@ -583,7 +585,7 @@
 <body>
   <div id="stage"></div>
 
-  <!-- sunlit 風格:陽光透過百葉窗與樹影斑駁灑落(隨晝夜切換) -->
+  <!-- sunlit style: sunlight filtering through blinds and tree shadows in dappled patches (changes with day/night) -->
   <div id="sunlight">
     <div class="glow"></div>
     <div class="glow-bounce"></div>
@@ -680,7 +682,7 @@
 (() => {
   "use strict";
 
-  // ---------- 狀態 ----------
+  // ---------- State ----------
   const PRESETS = [
     { id: "short", label: "短香", min: 15, lenScale: 0.62 },
     { id: "one",   label: "一炷香", min: 25, lenScale: 0.82 },
@@ -694,17 +696,17 @@
     duration: PRESETS[1].min * 60,
     remaining: PRESETS[1].min * 60,
     running: false,
-    lit: false,        // 點燃後即冒煙(暫停也續燃),香盡才熄
+    lit: false,        // Smokes once lit (keeps burning even when paused), goes out only when the incense is spent
     finished: false,
     completed: 0,
-    timeMode: 0,       // 0 無 / 1 顯示時間 / 2 蕃茄鐘(紅,自動循環)
-    resting: false,    // 蕃茄鐘:香盡後的休息
+    timeMode: 0,       // 0 none / 1 show time / 2 pomodoro (red, auto loop)
+    resting: false,    // Pomodoro: rest after the incense is spent
     restRemaining: 0,
-    theme: "paper",    // paper 宣紙 / night 夜
+    theme: "paper",    // paper / night
     savedAt: Date.now(),
   };
-  let REST_SEC = 5 * 60; // 休息 5 分鐘(可由 console 調整)
-  let timeScale = 1;     // 除錯:計時加速倍率(只影響倒數,不影響煙的動畫)
+  let REST_SEC = 5 * 60; // Rest 5 minutes (adjustable from console)
+  let timeScale = 1;     // Debug: timer speed multiplier (only affects countdown, not smoke animation)
 
   function save() {
     try {
@@ -735,18 +737,18 @@
       state.lit = !!s.lit;
       state.finished = !!s.finished;
       state.completed = s.completed ?? 0;
-      // 相容舊版 showTime
+      // Backward compatible with the old showTime field
       state.timeMode = (s.timeMode != null) ? s.timeMode : (s.showTime ? 1 : 0);
       state.resting = !!s.resting;
       state.restRemaining = s.restRemaining ?? 0;
       state.theme = s.theme === "night" ? "night" : "paper";
       const elapsed = (Date.now() - (s.savedAt || Date.now())) / 1000;
       if (state.resting) {
-        // 休息中:依流逝時間補扣
+        // Resting: subtract the elapsed time
         state.restRemaining = Math.max(0, state.restRemaining - elapsed);
         state.running = false;
       } else if (s.running && !s.finished) {
-        // 若離開時仍在燃,依時間流逝補扣
+        // If still burning when leaving, subtract the elapsed time
         state.remaining = Math.max(0, state.remaining - elapsed);
         state.running = state.remaining > 0;
         state.lit = true;
@@ -757,22 +759,22 @@
     } catch (e) {}
   }
 
-  // ---------- 主迴圈 ----------
+  // ---------- Main loop ----------
   let last = performance.now();
-  let simT = 0; // 模擬時鐘:只在燃燒中前進;暫停時凍結(煙、火光皆定格)
+  let simT = 0; // Simulation clock: advances only while burning; frozen when paused (smoke and flame both hold)
   function frame(now) {
     let dt = (now - last) / 1000;
     last = now;
-    if (dt > 0.05) dt = 0.05; // 切回分頁時防跳
+    if (dt > 0.05) dt = 0.05; // Prevent jumps when switching back to the tab
 
-    // 暫停 = 已點燃但未在計時、且香未盡 → 時間凍結
+    // Paused = lit but not counting down, and incense not spent -> time frozen
     const frozen = state.lit && !state.running && !state.finished;
-    const sdt = frozen ? 0 : dt;          // 凍結時不推進模擬
+    const sdt = frozen ? 0 : dt;          // Do not advance the simulation while frozen
     if (!frozen) simT += dt;
 
-    const tdt = dt * timeScale; // 倒數用(可加速)
+    const tdt = dt * timeScale; // For the countdown (can be sped up)
     if (state.resting) {
-      // 蕃茄鐘休息倒數,結束後自動重點一根
+      // Pomodoro rest countdown; auto-lights a new incense when it ends
       state.restRemaining -= tdt;
       if (state.restRemaining <= 0) { state.restRemaining = 0; relight(); }
     } else if (state.running && !state.finished) {
@@ -788,7 +790,7 @@
       lit: state.lit,
       finished: state.finished,
       running: state.running,
-      // 燃燒中(計時進行)才生煙;暫停或香盡都不再生成
+      // Only emit smoke while burning (countdown running); stop when paused or spent
       emitting: state.running && state.lit && !state.finished && state.remaining > 0,
     });
 
@@ -823,7 +825,7 @@
     if (animate) {
       const stage = document.getElementById("stage");
       stage.style.animation = "none";
-      void stage.offsetWidth; // 強制重啟 keyframe
+      void stage.offsetWidth; // Force a keyframe restart
       stage.style.animation = "";
       document.body.classList.add("theme-animate-ready");
     }
@@ -834,10 +836,10 @@
   const ICON_X = '<path d="M7.2 7.2l9.6 9.6M16.8 7.2l-9.6 9.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>';
   const MODE_NAME = ["無", "顯示時間", "蕃茄鐘"];
 
-  // 依模式渲染右上鈕(icon + 樣式);hover 時用來預覽下一階段
+  // Render the top-right button per mode (icon + style); also used to preview the next stage on hover
   function renderToggle(mode, preview) {
     const svg = elTimeToggle.querySelector("svg");
-    // 預覽「關閉(無)」時用叉號;蕃茄鐘用蕃茄;其餘用時鐘
+    // Preview of "off (none)" uses the X; pomodoro uses the tomato; otherwise the clock
     svg.innerHTML = mode === 2 ? ICON_TOMATO : (preview && mode === 0 ? ICON_X : ICON_CLOCK);
     elTimeToggle.classList.toggle("on", mode === 1);
     elTimeToggle.classList.toggle("pomo", mode === 2);
@@ -846,7 +848,7 @@
 
   function applyTimeVisibility() {
     const timed = state.timeMode >= 1;
-    // 香盡提示(#done)與讀數(#readout)同處 top:13%,香盡時隱藏讀數避免重疊
+    // The completion notice (#done) and readout (#readout) share top:13%; hide the readout when spent to avoid overlap
     const doneShown = state.finished && !state.resting;
     elReadout.classList.toggle("visible", timed && !doneShown);
     elTally.classList.toggle("visible", timed);
@@ -856,7 +858,7 @@
     elTimeToggle.setAttribute("aria-label", "計時模式:" + MODE_NAME[state.timeMode] + "(點擊切換為:" + MODE_NAME[next] + ")");
   }
 
-  // 未點燃時才顯示選香鈕,點燃後收起,重燃再現
+  // Show the incense picker only when not lit; collapse after lighting, reappear on relight
   function applyPresetsVisibility() {
     elPresets.classList.toggle("gone", state.lit);
   }
@@ -917,7 +919,7 @@
 
   function selectPreset(i) {
     if (state.lit && !state.finished && i !== state.presetIdx) {
-      // 燃燒中換香 = 重新點一炷
+      // Switching incense while burning = light a fresh one
     }
     state.presetIdx = i;
     state.duration = PRESETS[i].min * 60;
@@ -932,7 +934,7 @@
       c.setAttribute("aria-pressed", String(idx === i)));
     updateIgniteIcon();
     applyPresetsVisibility();
-    applyTimeVisibility();   // 重置後若計時開啟,讓讀數重新顯示
+    applyTimeVisibility();   // After reset, re-show the readout if the timer is on
     elReset.disabled = true;
     elHint.style.opacity = "1";
     elPhase.textContent = PRESETS[i].label.split("").join(" ");
@@ -942,15 +944,15 @@
 
   function updateIgniteIcon() {
     if (state.running) {
-      // 暫停圖
+      // Pause icon
       elIgniteIcon.innerHTML = '<rect x="8" y="6" width="2.6" height="12" rx="1" fill="currentColor"/><rect x="13.4" y="6" width="2.6" height="12" rx="1" fill="currentColor"/>';
       elIgnite.setAttribute("aria-label", "暫停");
     } else if (state.lit && !state.finished) {
-      // 續燃(播放)
+      // Resume (play)
       elIgniteIcon.innerHTML = '<path d="M8 5.5 18 12 8 18.5Z" fill="currentColor"/>';
       elIgnite.setAttribute("aria-label", "繼續");
     } else {
-      // 點香(火苗)
+      // Light incense (flame)
       elIgniteIcon.innerHTML = '<path d="M12 3c1.8 2.4 4.2 4 4.2 7.2A4.2 4.2 0 0 1 12 14.4a4.2 4.2 0 0 1-4.2-4.2C7.8 7 10.2 5.4 12 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M12 14.4V21" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>';
       elIgnite.setAttribute("aria-label", "點香");
     }
@@ -993,15 +995,15 @@
     elControls.classList.remove("dim");
     clearTimeout(dimTimer);
     if (state.timeMode === 2) {
-      startRest();           // 蕃茄鐘:自動進入休息
+      startRest();           // Pomodoro: auto-enter rest
     } else {
       elDone.classList.add("show");
     }
-    applyTimeVisibility();   // 香盡時隱藏讀數,避免與「香盡」提示重疊
+    applyTimeVisibility();   // Hide the readout when spent to avoid overlapping the completion notice
     save();
   }
 
-  // 蕃茄鐘:開始 5 分鐘休息
+  // Pomodoro: start a 5-minute rest
   function startRest() {
     state.resting = true;
     state.restRemaining = REST_SEC;
@@ -1009,7 +1011,7 @@
     save();
   }
 
-  // 蕃茄鐘:休息結束 → 自動點一根新香
+  // Pomodoro: rest ends -> auto-light a new incense
   function relight() {
     state.resting = false;
     state.remaining = state.duration;
@@ -1021,24 +1023,24 @@
     elReset.disabled = false;
     updateIgniteIcon();
     applyPresetsVisibility();
-    applyTimeVisibility();   // 休息結束重燃:恢復讀數顯示
+    applyTimeVisibility();   // Relight after rest: restore the readout display
     save();
   }
 
   elTimeToggle.addEventListener("click", () => {
     state.timeMode = (state.timeMode + 1) % 3;
     if (state.timeMode === 2) {
-      // 進入蕃茄鐘:若香已盡,立即開始休息倒數
+      // Enter pomodoro: if the incense is already spent, start the rest countdown immediately
       if (state.finished && !state.resting) startRest();
     } else if (state.resting) {
-      // 離開蕃茄鐘 → 取消休息,回到香盡狀態
+      // Leave pomodoro -> cancel rest, return to the spent state
       state.resting = false;
       if (state.finished) elDone.classList.add("show");
     }
     applyTimeVisibility();
     save();
   });
-  // hover 預覽下一階段的 icon(讓使用者發現有蕃茄鐘)
+  // Hover to preview the next stage's icon (helps users discover the pomodoro mode)
   elTimeToggle.addEventListener("mouseenter", () => {
     renderToggle((state.timeMode + 1) % 3, true);
   });
@@ -1060,7 +1062,7 @@
     save();
   });
 
-  // 點畫面 = 點香 / 暫停
+  // Tap the screen = light incense / pause
   document.getElementById("scene").addEventListener("click", toggle);
   document.getElementById("stage").addEventListener("click", toggle);
   window.addEventListener("keydown", (e) => {
@@ -1068,22 +1070,22 @@
   });
   window.addEventListener("pointermove", scheduleDim, { passive: true });
 
-  // 視窗離開暫停? 保留續燃,僅存檔
+  // Leaving the window does not pause; keep burning, just persist state
   document.addEventListener("visibilitychange", save);
   window.addEventListener("beforeunload", save);
   setInterval(save, 4000);
 
-  // ---------- 除錯介面(console)----------
-  // 用法範例:
-  //   incense.speed(60)        // 計時加速 60 倍(25 分香 → 約 25 秒燒完)
-  //   incense.speed(1)         // 回正常速
-  //   incense.setRemaining(10) // 把目前香的剩餘設為 10 秒
-  //   incense.finish()         // 立刻燒盡(蕃茄鐘模式會自動進入休息)
-  //   incense.restLength(20)   // 把休息長度改成 20 秒(下次休息生效)
-  //   incense.setRest(5)       // 若在休息中,把休息剩餘設為 5 秒
-  //   incense.endRest()        // 立刻結束休息 → 自動點下一根
-  //   incense.pomodoro()       // 切到蕃茄鐘模式
-  //   incense.status()         // 印出目前狀態
+  // ---------- Debug interface (console) ----------
+  // Usage examples:
+  //   incense.speed(60)        // Speed up the timer 60x (a 25-min incense burns in ~25s)
+  //   incense.speed(1)         // Back to normal speed
+  //   incense.setRemaining(10) // Set the current incense's remaining time to 10s
+  //   incense.finish()         // Burn out immediately (pomodoro mode auto-enters rest)
+  //   incense.restLength(20)   // Change rest length to 20s (takes effect next rest)
+  //   incense.setRest(5)       // If resting, set the rest remaining to 5s
+  //   incense.endRest()        // End the rest immediately -> auto-light the next one
+  //   incense.pomodoro()       // Switch to pomodoro mode
+  //   incense.status()         // Print the current state
   window.incense = {
     get state() { return state; },
     speed(x) { timeScale = Math.max(0, +x || 1); console.log("[incense] timeScale =", timeScale); return timeScale; },
@@ -1111,7 +1113,7 @@
     },
   };
 
-  // ---------- 啟動 ----------
+  // ---------- Startup ----------
   IncenseScene.init(document.getElementById("scene"));
   load();
   buildPresets();
@@ -1128,7 +1130,7 @@
   requestAnimationFrame(frame);
 })();
 
-// ---------- PWA:註冊 Service Worker(離線可用)----------
+// ---------- PWA: register Service Worker (offline-capable) ----------
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});

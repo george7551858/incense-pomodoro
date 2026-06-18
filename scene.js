@@ -1,9 +1,9 @@
-// 線香場景:Canvas 繪圖引擎(值噪聲、curl 旋流、香煙粒子、香枝、餘燼、火星)
-// 僅負責繪圖,不持有計時/UI 狀態;由主程式每幀傳入視圖快照來驅動。
+// Incense scene: Canvas rendering engine (value noise, curl flow, smoke particles, incense stick, ember, sparks)
+// Only handles rendering; holds no timer/UI state; driven by a per-frame view snapshot passed in from the main app.
 (function (global) {
   "use strict";
 
-  // ---------- 值噪聲(平滑湍流場) ----------
+  // ---------- Value noise (smooth turbulence field) ----------
   const perm = new Uint8Array(512);
   (() => {
     const p = new Uint8Array(256);
@@ -32,7 +32,7 @@
     return lerp(x1, x2, v); // -1..1
   }
 
-  // ---------- 畫布 ----------
+  // ---------- Canvas ----------
   let canvas = null, ctx = null;
   let W = 0, H = 0, DPR = 1, cx = 0, baseY = 0, maxStickLen = 0;
 
@@ -44,38 +44,38 @@
     canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     cx = W * 0.5;
-    baseY = H * 0.80;                       // 香插上緣
-    maxStickLen = Math.min(H * 0.46, 460);  // 最長一炷香的視覺長度
+    baseY = H * 0.80;                       // Top edge of the holder
+    maxStickLen = Math.min(H * 0.46, 460);  // Visual length of the longest incense stick
   }
 
-  // ---------- 平滑插值 + curl 噪聲旋流場 ----------
+  // ---------- Smoothstep + curl-noise vortex field ----------
   const smoothstep = (e0, e1, x) => {
     const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
     return t * t * (3 - 2 * t);
   };
-  // 多層噪聲位能場:網域扭曲 + 互不成倍數的時間速率 → 不規律旋流
+  // Multi-octave noise potential field: domain warping + non-multiple time rates -> irregular vortices
   function fbmPotential(x, y, t) {
-    // 低頻網域扭曲,把規律胞格揉成不規則漩渦
+    // Low-frequency domain warp to knead the regular cells into irregular swirls
     const wx = valueNoise(x * 0.0034 + 19.2, y * 0.0034 - t * 0.037) * 48;
     const wy = valueNoise(x * 0.0034 - 7.8, y * 0.0034 - t * 0.061) * 48;
     const X = x + wx, Y = y + wy;
     let n = 0;
-    n += valueNoise(X * 0.0026 + 2.0, Y * 0.0026 - t * 0.043) * 1.25; // 大尺度慢速不規律漂移
+    n += valueNoise(X * 0.0026 + 2.0, Y * 0.0026 - t * 0.043) * 1.25; // Large-scale slow irregular drift
     n += valueNoise(X * 0.0072 + 11.5, Y * 0.0072 - t * 0.149) * 0.82;
     n += valueNoise(X * 0.0151 + 4.2, Y * 0.0151 - t * 0.251) * 0.40;
     n += valueNoise(X * 0.0313 + 23.7, Y * 0.0313 - t * 0.397) * 0.19;
     return n;
   }
-  // 取位能場的旋度 → 無散度旋流(煙的捲曲來源)
+  // Take the curl of the potential field -> divergence-free flow (the source of smoke curling)
   function curlField(x, y, t) {
     const e = 1.4;
     const dy = (fbmPotential(x, y + e, t) - fbmPotential(x, y - e, t));
     const dx = (fbmPotential(x + e, y, t) - fbmPotential(x - e, y, t));
-    // 正規化到約 ±1
+    // Normalize to roughly ±1
     return { x: dy * 20, y: -dx * 20 };
   }
 
-  // ---------- 柔煙貼圖(白 / 墨 兩款,離屏預繪) ----------
+  // ---------- Soft smoke sprites (white / ink variants, pre-rendered offscreen) ----------
   function makePuff(stops) {
     const c = document.createElement("canvas");
     c.width = c.height = 64;
@@ -99,7 +99,7 @@
     [1, "rgba(86,88,96,0)"],
   ]);
 
-  // ---------- 香煙粒子(curl-noise 細煙絲) ----------
+  // ---------- Smoke particles (curl-noise thin wisps) ----------
   const particles = [];
   const MAX_P = 3200;
   let emitAcc = 0;
@@ -111,16 +111,16 @@
       const sxx = sx + (Math.random() - 0.5) * 1.0;
       const syy = sy + (Math.random() - 0.5) * 1.0;
       particles.push({
-        x: sxx, y: syy,                          // 極窄出口 → 細煙柱
-        px: sxx, py: syy,                        // 前一幀位置(動態模糊)
+        x: sxx, y: syy,                          // Very narrow outlet -> thin smoke column
+        px: sxx, py: syy,                        // Previous-frame position (motion blur)
         vx: (Math.random() - 0.5) * 3,
-        vy: -(46 + Math.random() * 16),         // 初速向上(強)
+        vy: -(46 + Math.random() * 16),         // Initial upward velocity (strong)
         life: 0,
         max: 6.5 + Math.random() * 4.5,
-        size: 2.2 + Math.random() * 1.6,        // 起始細(略加大以連續)
+        size: 2.2 + Math.random() * 1.6,        // Start thin (slightly larger for continuity)
         seed: Math.random() * 6.28,
-        wob: 0.7 + Math.random() * 0.6,         // 個體擾動權重
-        aJit: 0.7 + Math.random() * 0.5,        // 透明度個體差
+        wob: 0.7 + Math.random() * 0.6,         // Per-particle turbulence weight
+        aJit: 0.7 + Math.random() * 0.5,        // Per-particle opacity variation
       });
     }
   }
@@ -134,23 +134,23 @@
       const ageFrac = p.life / p.max;
       const heightAbove = Math.max(0, sourceY - p.y);
 
-      // 由直轉亂:近香頭層流(細直),約一段距離後轉湍流
+      // From straight to chaotic: laminar near the tip (thin and straight), turbulent after some distance
       const turb = smoothstep(H * 0.02, H * 0.22, heightAbove) * p.wob;
 
-      // 旋流場(curl noise) → 捲曲與漩渦
+      // Curl-noise flow field -> curling and swirls
       const c = curlField(p.x, p.y, t);
-      const hSwirl = 8 + 78 * turb;             // 水平擺幅(高處翻騰更明顯)
-      const vSwirl = 5 + 17 * turb;             // 垂直擾動(小)
-      // 上升始終為主力(不隨湍流減弱),煙才會持續往上飄出畫面
-      const rise = 58 - 16 * ageFrac;           // 隨年齡略減(冷卻)
+      const hSwirl = 8 + 78 * turb;             // Horizontal sway (more pronounced higher up)
+      const vSwirl = 5 + 17 * turb;             // Vertical jitter (small)
+      // Rising is always the dominant force (not weakened by turbulence), so smoke keeps drifting off-screen
+      const rise = 58 - 16 * ageFrac;           // Slightly decreases with age (cooling)
 
       let tvx = c.x * hSwirl;
       let tvy = -rise + c.y * vSwirl;
 
-      // 近香頭把粒子拉回中軸 → 形成纖細直立煙柱
+      // Near the tip, pull particles back to the center axis -> forms a thin upright smoke column
       tvx += (cx - p.x) * (1 - turb) * 3.0;
 
-      // 慣性混合(半拉格朗日平流)
+      // Inertial blending (semi-Lagrangian advection)
       const k = Math.min(1, dt * 5);
       p.vx += (tvx - p.vx) * k;
       p.vy += (tvy - p.vy) * k;
@@ -160,7 +160,7 @@
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      // 隨年齡緩慢膨脹擴散(限制上限,保留細絲)
+      // Slowly expand/diffuse with age (capped to keep the wisps thin)
       p.size = Math.min(20, p.size + (0.9 + 2.6 * turb) * dt);
     }
   }
@@ -172,18 +172,18 @@
     for (const p of particles) {
       const ageFrac = p.life / p.max;
       const fadeIn = Math.min(1, p.life / 0.5);
-      const fadeOut = Math.pow(1 - ageFrac, 1.4); // 較緩淡出 → 煙飄得更高仍可見
-      // 愈擴散愈淡(細密處亮、瀰漫處薄)
+      const fadeOut = Math.pow(1 - ageFrac, 1.4); // Slower fade-out -> smoke stays visible even higher up
+      // The more it diffuses, the fainter it gets (bright where dense, thin where diffuse)
       let a = baseA * p.aJit * fadeIn * fadeOut / (1 + p.size * 0.06);
       if (a <= 0.002) continue;
       ctx.globalAlpha = a;
 
-      // 順著移動方向把煙粒拉長(動態模糊)→ 連成煙絲,消除一顆顆的顆粒感
+      // Stretch the particle along its motion direction (motion blur) -> connects into wisps, removing the grainy dotted look
       const dx = p.x - p.px, dy = p.y - p.py;
       const seg = Math.hypot(dx, dy);
       const ang = seg > 0.001 ? Math.atan2(dy, dx) : -Math.PI / 2;
-      const w = p.size * 2;                 // 橫向寬度
-      const len = w + seg * 2.4;            // 沿運動方向拉長(含上一幀位移)
+      const w = p.size * 2;                 // Lateral width
+      const len = w + seg * 2.4;            // Stretched along the motion direction (includes last-frame displacement)
       ctx.save();
       ctx.translate((p.x + p.px) * 0.5, (p.y + p.py) * 0.5);
       ctx.rotate(ang);
@@ -194,7 +194,7 @@
     ctx.globalCompositeOperation = "source-over";
   }
 
-  // ---------- 香枝 / 餘燼 / 灰 ----------
+  // ---------- Incense stick / ember / ash ----------
   let flick = 0;
   const sparks = [];
 
@@ -205,12 +205,12 @@
   }
 
   function drawHolder(night) {
-    // 香插:一只低淺的沙缽
-    const w = 150; // 托盤固定寬度,不隨螢幕寬度縮放
+    // Holder: a shallow sand bowl
+    const w = 150; // Fixed tray width, does not scale with screen width
     const h = 18;
     const y = baseY;
     ctx.save();
-    // 缽影:柔邊接地影。夜間背景偏黑,須改用黑色加深才看得見(原暖褐比夜底更亮 → 等於消失)
+    // Bowl shadow: soft contact shadow. At night the background is near-black, so use a darker black to stay visible (the original warm brown is brighter than the night base -> effectively disappears)
     ctx.globalCompositeOperation = "source-over";
     const sy = y + h * 1.0;
     const rx = w * 0.62;
@@ -233,7 +233,7 @@
     ctx.arc(0, 0, rx, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    // 缽身
+    // Bowl body
     const grad = ctx.createLinearGradient(cx - w/2, y, cx + w/2, y);
     grad.addColorStop(0, "#b9a988");
     grad.addColorStop(0.5, "#cdbd9b");
@@ -244,7 +244,7 @@
     ctx.closePath();
     ctx.fillStyle = grad;
     ctx.fill();
-    // 缽口沙面
+    // Sand surface at the bowl mouth
     ctx.beginPath();
     ctx.ellipse(cx, y, w * 0.5, h * 0.42, 0, 0, Math.PI * 2);
     ctx.fillStyle = "#9c8c6b";
@@ -265,15 +265,15 @@
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
 
-    // 香枝本體(下半竹芯、上半藥體;深色主題提亮以保留可見度)
+    // Incense stick body (lower half bamboo core, upper half paste; brightened in dark theme to stay visible)
     ctx.lineCap = "round";
-    ctx.strokeStyle = night ? "#b6a585" : "#7c6a4d"; // 竹芯
+    ctx.strokeStyle = night ? "#b6a585" : "#7c6a4d"; // Bamboo core
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(topX, baseY);
     ctx.lineTo(topX, tipY);
     ctx.stroke();
-    ctx.strokeStyle = night ? "#8c5446" : "#5a3327"; // 藥體
+    ctx.strokeStyle = night ? "#8c5446" : "#5a3327"; // Paste body
     ctx.lineWidth = 3.0;
     ctx.beginPath();
     ctx.moveTo(topX, baseY - 2);
@@ -281,7 +281,7 @@
     ctx.stroke();
 
     if (view.lit && !view.finished) {
-      // 餘燼上方一小段白灰(細、微擺)
+      // A short bit of white ash above the ember (thin, slightly swaying)
       const ashLen = 5 + Math.sin(t * 1.7) * 1.0;
       ctx.strokeStyle = night ? "rgba(196,192,184,0.8)" : "rgba(120,114,104,0.8)";
       ctx.lineWidth = 2.6;
@@ -290,7 +290,7 @@
       ctx.lineTo(topX + Math.sin(t * 0.9) * 1.1, tipY - ashLen);
       ctx.stroke();
 
-      // 餘燼:只是一點暖紅小光(火光大幅縮小)
+      // Ember: just a small warm-red glow (flame greatly reduced)
       flick = 0.55 + 0.25 * (valueNoise(t * 2.0, 7.3) * 0.5 + 0.5) + 0.08 * Math.sin(t * 11);
       const emberY = tipY;
       const glowR = 4.5 + 2.2 * flick;
@@ -303,14 +303,14 @@
       ctx.beginPath();
       ctx.arc(topX, emberY, glowR, 0, Math.PI * 2);
       ctx.fill();
-      // 熾核(極小)
+      // Glowing core (tiny)
       ctx.fillStyle = `rgba(255,196,140,${0.85 * flick})`;
       ctx.beginPath();
       ctx.arc(topX, emberY, 0.9 + 0.5 * flick, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalCompositeOperation = "source-over";
 
-      // 偶發極小火星(稀少,暫停時不產生)
+      // Occasional tiny sparks (rare, not produced while paused)
       if (view.running && Math.random() < 0.012) {
         sparks.push({
           x: topX + (Math.random() - 0.5) * 1.4,
@@ -321,7 +321,7 @@
         });
       }
     } else if (!view.lit) {
-      // 未點:香頭一抹深色
+      // Unlit: a dark spot at the incense tip
       ctx.fillStyle = night ? "#d8d2c4" : "#3c2018";
       ctx.beginPath();
       ctx.arc(topX, tipY, 1.8, 0, Math.PI * 2);
@@ -349,7 +349,7 @@
     ctx.restore();
   }
 
-  // ---------- 對外介面 ----------
+  // ---------- Public interface ----------
   function init(cv) {
     canvas = cv;
     ctx = canvas.getContext("2d");
@@ -357,17 +357,17 @@
     window.addEventListener("resize", resize);
   }
 
-  // 清空煙與火星(換香 / 重燃時呼叫)
+  // Clear smoke and sparks (called when switching incense / relighting)
   function reset() {
     particles.length = 0;
     sparks.length = 0;
   }
 
-  // 每幀繪製。view = {
-  //   dt, sdt, simT,            // 真實 dt(生煙量)/ 模擬 dt(凍結時為 0)/ 模擬時鐘
-  //   theme, lenScale, frac,    // 主題、香長比例、剩餘比例(0..1)
-  //   lit, finished, running,   // 香的狀態
-  //   emitting,                 // 是否生煙
+  // Draw per frame. view = {
+  //   dt, sdt, simT,            // Real dt (smoke emission) / sim dt (0 when frozen) / sim clock
+  //   theme, lenScale, frac,    // Theme, stick-length scale, remaining fraction (0..1)
+  //   lit, finished, running,   // Incense state
+  //   emitting,                 // Whether to emit smoke
   // }
   function render(view) {
     ctx.clearRect(0, 0, W, H);
@@ -375,13 +375,13 @@
 
     const { tipY } = currentStick(view.lenScale, view.frac);
     if (view.emitting) {
-      const rate = 300 + 50 * Math.sin(view.simT * 0.6); // 煙量微呼吸(高密度連續)
+      const rate = 300 + 50 * Math.sin(view.simT * 0.6); // Subtle breathing in smoke volume (high-density, continuous)
       emitSmoke(cx, tipY - 1, view.dt, rate);
     }
 
-    updateSmoke(view.sdt, view.simT, tipY);  // 凍結時 sdt=0,煙粒停在原地
+    updateSmoke(view.sdt, view.simT, tipY);  // sdt=0 when frozen, smoke particles stay put
     drawSmoke(view.theme === "night");
-    drawIncense(view.simT, view);            // 餘燼閃爍用 simT,暫停時定格
+    drawIncense(view.simT, view);            // Ember flicker uses simT, holds still when paused
     updateSparks(view.sdt);
   }
 
