@@ -743,11 +743,14 @@
   "use strict";
 
   // ---------- State ----------
+  // lenScale = the incense's overall size relative to a full 立香 (one/三炷香 = 1.0),
+  // matching the reference chart proportions: 立香 20cm / 線香 14cm / 盤香 10cm / 香錐 3.5cm.
   const PRESETS = [
-    { id: "short", label: "短香", min: 15, lenScale: 0.62 },
-    { id: "one",   label: "一炷香", min: 25, lenScale: 0.82 },
-    { id: "mid",   label: "中香", min: 45, lenScale: 0.92 },
-    { id: "long",  label: "長香", min: 60, lenScale: 1.0 },
+    { id: "thread", label: "線香",   min: 15, shape: "stick",  lenScale: 0.70, thin: true },
+    { id: "one",    label: "一炷香", min: 25, shape: "stick",  lenScale: 1.0 },
+    { id: "three",  label: "三炷香", min: 25, shape: "triple", lenScale: 1.0 },
+    { id: "cone",   label: "香錐",   min: 45, shape: "cone",   lenScale: 0.175 },
+    { id: "coil",   label: "盤香",   min: 60, shape: "coil",   lenScale: 0.50 },
   ];
 
   const LS = "incense-pomodoro-v1";
@@ -844,17 +847,22 @@
       if (state.remaining <= 0) { state.remaining = 0; finish(); }
     }
 
-    // Stick length tracks the remaining time against the incense's original duration
-    // (constant length-per-second), not the live `duration`. This keeps the burn linear,
-    // makes ±1 min visibly scale the stick, and avoids the jump that happened when
-    // `duration` got clamped down toward `remaining` near the end.
-    const baseSec = PRESETS[state.presetIdx].min * 60;
-    const lenScale = Math.min(1, PRESETS[state.presetIdx].lenScale * (baseSec > 0 ? state.remaining / baseSec : 0));
+    // Burn progress tracks the remaining time against the incense's original duration
+    // (constant rate), not the live `duration`. This keeps the burn linear, makes ±1 min
+    // visibly scale the shape, and avoids the jump that happened when `duration` got
+    // clamped down toward `remaining` near the end. `lenScale` stays the preset's fixed
+    // maximum; the scene applies `progress` per shape (stick shortens, cone lowers,
+    // coil's ember travels inward).
+    const preset = PRESETS[state.presetIdx];
+    const baseSec = preset.min * 60;
+    const progress = Math.max(0, Math.min(1, baseSec > 0 ? state.remaining / baseSec : 0));
     IncenseScene.render({
       dt, sdt, simT,
       theme: state.theme,
-      lenScale,
-      frac: 1,
+      shape: preset.shape,
+      thin: !!preset.thin,
+      lenScale: preset.lenScale,
+      progress,
       lit: state.lit,
       finished: state.finished,
       running: state.running,
