@@ -4,6 +4,21 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>一炷香 · 蕃茄鐘</title>
+<meta name="description" content="以一炷香為意象的極簡專注計時器:點香、看煙起、香盡而功成。" />
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#efe7d6" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#101117" media="(prefers-color-scheme: dark)" />
+<link rel="icon" href="icons/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="一炷香" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@200;300;400;500&display=swap" rel="stylesheet" />
@@ -1094,6 +1109,13 @@
   scheduleDim();
   requestAnimationFrame(frame);
 })();
+
+// ---------- PWA:註冊 Service Worker(離線可用)----------
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

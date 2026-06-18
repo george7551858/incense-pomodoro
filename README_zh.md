@@ -14,6 +14,7 @@
 - **今日紀錄**：以點數標記當日完成的香段，資料保存在瀏覽器 `localStorage`。
 - **晝 / 夜主題**：宣紙暖色與夜間深色兩種氛圍。
 - **點香 / 暫停 / 重燃**：輕觸畫面或按鈕即可操作。
+- **PWA · 可安裝離線使用**：附 Web App Manifest 與各尺寸圖示，並以 Service Worker 快取資源,可加入主畫面、離線開啟。
 
 ## 使用方式
 
@@ -28,6 +29,8 @@ xdg-open index.html    # Linux
 python3 -m http.server 8000
 # 瀏覽 http://localhost:8000
 ```
+
+> 安裝為 App 或離線使用(PWA)需透過 `http(s)://` 提供服務(`file://` 不會註冊 Service Worker)。以 `localhost` 或 HTTPS 開啟即可在瀏覽器選單看到「安裝」。
 
 ## 操作
 

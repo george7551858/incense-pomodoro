@@ -16,6 +16,7 @@ The day/night sunlight effect is inspired by https://sunlit.pages.dev/.
 - **Daily record**: Completed sessions are marked as dots and stored in the browser's `localStorage`.
 - **Day / Night theme**: Warm paper tones by day, a deep dark mood by night.
 - **Light / Pause / Relight**: Tap the screen or use the buttons to control the timer.
+- **PWA · installable & offline**: Ships a Web App Manifest with a full icon set and a service worker that caches assets, so you can add it to your home screen and run it offline.
 
 ## Usage
 
@@ -30,6 +31,8 @@ xdg-open index.html    # Linux
 python3 -m http.server 8000
 # Visit http://localhost:8000
 ```
+
+> Installing the app or using it offline (PWA) requires serving over `http(s)://` — a service worker is not registered on `file://`. Open it via `localhost` or HTTPS and you'll see an "Install" option in your browser.
 
 ## Controls
 
