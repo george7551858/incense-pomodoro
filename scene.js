@@ -206,7 +206,7 @@
 
   function drawHolder(night) {
     // 香插:一只低淺的沙缽
-    const w = Math.min(W * 0.18, 150);
+    const w = 150; // 托盤固定寬度,不隨螢幕寬度縮放
     const h = 18;
     const y = baseY;
     ctx.save();

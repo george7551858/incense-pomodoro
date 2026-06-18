@@ -554,6 +554,19 @@
   body[data-theme="night"] #sunlight .shutters { gap: 22px; }
   body[data-theme="night"] #sunlight .shutter { height: 74px; }
 
+  /* 窄/直式螢幕:252deg 遮罩在橫向才有足夠跨距漸隱,窄螢幕轉場被壓縮成左側可見硬邊。
+     加寬 perspective、放寬遮罩轉場與柔化模糊,讓窗光從右上斜射後平順溶入背景 */
+  @media (max-width: 1280px) {
+    #sunlight .perspective {
+      width: 120vw;
+      -webkit-mask-image: linear-gradient(245deg, transparent 0%, transparent 18%, black 88%, black 100%);
+      mask-image: linear-gradient(245deg, transparent 0%, transparent 18%, black 88%, black 100%);
+    }
+    #sunlight .progressive-blur > div:nth-child(2) { --blur-amount: 6px;  --stop1: 15%; --stop2: 95%; }
+    #sunlight .progressive-blur > div:nth-child(3) { --blur-amount: 14px; --stop1: 30%; --stop2: 100%; }
+    #sunlight .progressive-blur > div:nth-child(4) { --blur-amount: 22px; --stop1: 55%; --stop2: 100%; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     #sunlight .leaves { animation: none; }
     body.theme-animate-ready #stage { animation: none !important; }
@@ -832,11 +845,13 @@
   }
 
   function applyTimeVisibility() {
-    const show = state.timeMode >= 1;
-    elReadout.classList.toggle("visible", show);
-    elTally.classList.toggle("visible", show);
+    const timed = state.timeMode >= 1;
+    // 香盡提示(#done)與讀數(#readout)同處 top:13%,香盡時隱藏讀數避免重疊
+    const doneShown = state.finished && !state.resting;
+    elReadout.classList.toggle("visible", timed && !doneShown);
+    elTally.classList.toggle("visible", timed);
     renderToggle(state.timeMode, false);
-    elTimeToggle.setAttribute("aria-pressed", String(show));
+    elTimeToggle.setAttribute("aria-pressed", String(timed));
     const next = (state.timeMode + 1) % 3;
     elTimeToggle.setAttribute("aria-label", "計時模式:" + MODE_NAME[state.timeMode] + "(點擊切換為:" + MODE_NAME[next] + ")");
   }
@@ -917,6 +932,7 @@
       c.setAttribute("aria-pressed", String(idx === i)));
     updateIgniteIcon();
     applyPresetsVisibility();
+    applyTimeVisibility();   // 重置後若計時開啟,讓讀數重新顯示
     elReset.disabled = true;
     elHint.style.opacity = "1";
     elPhase.textContent = PRESETS[i].label.split("").join(" ");
@@ -981,6 +997,7 @@
     } else {
       elDone.classList.add("show");
     }
+    applyTimeVisibility();   // 香盡時隱藏讀數,避免與「香盡」提示重疊
     save();
   }
 
@@ -1004,6 +1021,7 @@
     elReset.disabled = false;
     updateIgniteIcon();
     applyPresetsVisibility();
+    applyTimeVisibility();   // 休息結束重燃:恢復讀數顯示
     save();
   }
 
