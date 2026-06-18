@@ -1,5 +1,5 @@
 /* Incense Pomodoro — Service Worker (offline-first) */
-const VERSION = "incense-pomodoro-20260618T082415Z";
+const VERSION = "incense-pomodoro-20260618T135456Z";
 const CORE = [
   ".",
   "index.html",

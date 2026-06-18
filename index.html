@@ -276,14 +276,30 @@
     font-feature-settings: "tnum" 1;
     transition: opacity 0.8s ease;
   }
+  /* Pomodoro rest length / rest countdown: small red line under the main timer */
   #phase {
-    margin-top: 0.7em;
-    font-size: clamp(13px, 1.5vw, 16px);
-    letter-spacing: 0.5em;
-    text-indent: 0.5em;
-    color: var(--ink-soft);
+    margin-top: 0.8em;
+    font-size: clamp(12px, 1.4vw, 15px);
+    letter-spacing: 0.12em;
+    text-indent: 0;
+    color: #c0392b;
     font-weight: 300;
-    transition: opacity 0.8s ease;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    min-height: 1.2em;
+    line-height: 1;
+    transition:
+      font-size 0.9s cubic-bezier(.2,.8,.2,1),
+      letter-spacing 0.9s cubic-bezier(.2,.8,.2,1),
+      margin-top 0.9s cubic-bezier(.2,.8,.2,1),
+      opacity 0.8s ease;
+  }
+  /* While resting, the red countdown grows to match the main timer */
+  #readout.resting #phase {
+    margin-top: 0.5em;
+    font-size: clamp(56px, 11vw, 124px);
+    letter-spacing: 0.06em;
+    font-weight: 200;
   }
 
   /* Control bar */
@@ -358,11 +374,25 @@
     font-weight: 300;
   }
 
+  /* 3 columns keep #ignite centered regardless of the side controls' widths */
   .actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
+    width: 100%;
+    max-width: 420px;
     gap: 28px;
   }
+  #reset {
+    justify-self: end;
+    display: grid;
+    place-items: center;
+    padding: 6px;
+    letter-spacing: 0;
+    text-indent: 0;
+  }
+  #reset svg { width: 22px; height: 22px; }
+  #adjWork { justify-self: start; }
   .btn {
     appearance: none;
     border: 0;
@@ -379,6 +409,23 @@
   }
   .btn:hover { color: var(--ink); }
   .btn:disabled { opacity: 0.28; cursor: default; }
+
+  .adjgrp { display: flex; align-items: center; gap: 4px; }
+  .adjgrp[hidden] { display: none; }
+  /* Pomodoro rest-time adjust: docked under the mode button at top-right */
+  #adjRest {
+    position: fixed;
+    top: 74px;
+    right: 22px;
+    z-index: 8;
+  }
+  .btn.step {
+    font-size: 19px;
+    line-height: 1;
+    padding: 4px 7px;
+    letter-spacing: 0;
+    text-indent: 0;
+  }
 
   #ignite {
     width: 64px;
@@ -637,7 +684,7 @@
 
   <div id="readout">
     <div id="time">25:00</div>
-    <div id="phase">一 炷 香</div>
+    <div id="phase"></div>
   </div>
 
   <div id="done">
@@ -651,6 +698,11 @@
       <path d="M12 7.4V4.7M12 7.4c.2-1.6 1.5-2.7 3.3-2.6M12 7.4c-.2-1.4-1.4-2.4-3-2.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
     </svg>
   </button>
+
+  <div class="adjgrp" id="adjRest" hidden>
+    <button class="btn step" data-act="rest-" title="休息 −1 分" aria-label="休息 減 1 分">−</button>
+    <button class="btn step" data-act="rest+" title="休息 +1 分" aria-label="休息 加 1 分">+</button>
+  </div>
 
   <div id="tally">
     <span>今日</span>
@@ -666,14 +718,22 @@
   <div id="controls">
     <div class="presets" id="presets"></div>
     <div class="actions">
-      <button class="btn" id="reset" disabled>重 燃</button>
+      <button class="btn" id="reset" disabled title="重燃" aria-label="重燃">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 12a8 8 0 0 1 13.4-5.9M20 12a8 8 0 0 1-13.4 5.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M20 4v5h-5M4 20v-5h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
       <button id="ignite" title="點香 / 暫停" aria-label="點香">
         <svg viewBox="0 0 24 24" fill="none" id="igniteIcon">
           <path d="M12 3c1.8 2.4 4.2 4 4.2 7.2A4.2 4.2 0 0 1 12 14.4a4.2 4.2 0 0 1-4.2-4.2C7.8 7 10.2 5.4 12 3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
           <path d="M12 14.4V21" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
         </svg>
       </button>
-      <button class="btn" id="addmin" title="延香 +5 分">延 香</button>
+      <div class="adjgrp" id="adjWork" hidden>
+        <button class="btn step" data-act="work-" title="香 −1 分" aria-label="香 減 1 分">−</button>
+        <button class="btn step" data-act="work+" title="延香 +1 分" aria-label="香 加 1 分">+</button>
+      </div>
     </div>
   </div>
 
@@ -721,6 +781,7 @@
         timeMode: state.timeMode,
         resting: state.resting,
         restRemaining: state.restRemaining,
+        restLen: REST_SEC,
         theme: state.theme,
         savedAt: Date.now(),
       }));
@@ -741,6 +802,7 @@
       state.timeMode = (s.timeMode != null) ? s.timeMode : (s.showTime ? 1 : 0);
       state.resting = !!s.resting;
       state.restRemaining = s.restRemaining ?? 0;
+      if (s.restLen) REST_SEC = s.restLen;
       state.theme = s.theme === "night" ? "night" : "paper";
       const elapsed = (Date.now() - (s.savedAt || Date.now())) / 1000;
       if (state.resting) {
@@ -782,11 +844,17 @@
       if (state.remaining <= 0) { state.remaining = 0; finish(); }
     }
 
+    // Stick length tracks the remaining time against the incense's original duration
+    // (constant length-per-second), not the live `duration`. This keeps the burn linear,
+    // makes ±1 min visibly scale the stick, and avoids the jump that happened when
+    // `duration` got clamped down toward `remaining` near the end.
+    const baseSec = PRESETS[state.presetIdx].min * 60;
+    const lenScale = Math.min(1, PRESETS[state.presetIdx].lenScale * (baseSec > 0 ? state.remaining / baseSec : 0));
     IncenseScene.render({
       dt, sdt, simT,
       theme: state.theme,
-      lenScale: PRESETS[state.presetIdx].lenScale,
-      frac: state.duration > 0 ? state.remaining / state.duration : 0,
+      lenScale,
+      frac: 1,
       lit: state.lit,
       finished: state.finished,
       running: state.running,
@@ -806,7 +874,8 @@
   const elIgnite = document.getElementById("ignite");
   const elIgniteIcon = document.getElementById("igniteIcon");
   const elReset = document.getElementById("reset");
-  const elAdd = document.getElementById("addmin");
+  const elAdjWork = document.getElementById("adjWork");
+  const elAdjRest = document.getElementById("adjRest");
   const elPresets = document.getElementById("presets");
   const elDone = document.getElementById("done");
   const elHint = document.getElementById("hint");
@@ -852,6 +921,9 @@
     const doneShown = state.finished && !state.resting;
     elReadout.classList.toggle("visible", timed && !doneShown);
     elTally.classList.toggle("visible", timed);
+    // Time adjust (−/+) only when the time is shown; rest adjust only in pomodoro
+    elAdjWork.hidden = !timed;
+    elAdjRest.hidden = state.timeMode !== 2;
     renderToggle(state.timeMode, false);
     elTimeToggle.setAttribute("aria-pressed", String(timed));
     const next = (state.timeMode + 1) % 3;
@@ -880,12 +952,13 @@
   }
 
   function renderUI() {
+    elReadout.classList.toggle("resting", state.resting);
     if (state.resting) {
-      elTime.textContent = fmt(state.restRemaining);
-      elPhase.textContent = "休 息";
+      elTime.textContent = "休 息";
+      elPhase.textContent = fmt(state.restRemaining);
     } else {
       elTime.textContent = fmt(state.remaining);
-      elPhase.textContent = PRESETS[state.presetIdx].label.split("").join(" ");
+      elPhase.textContent = state.timeMode === 2 ? fmt(REST_SEC) : "";
     }
   }
 
@@ -937,7 +1010,7 @@
     applyTimeVisibility();   // After reset, re-show the readout if the timer is on
     elReset.disabled = true;
     elHint.style.opacity = "1";
-    elPhase.textContent = PRESETS[i].label.split("").join(" ");
+    renderUI();
     scheduleDim();
     save();
   }
@@ -1056,11 +1129,43 @@
 
   elIgnite.addEventListener("click", toggle);
   elReset.addEventListener("click", reset);
-  elAdd.addEventListener("click", () => {
-    state.duration += 5 * 60;
-    state.remaining += 5 * 60;
+
+  const STEP = 60;         // Each tap adjusts by 1 minute
+  const MIN_SEC = 60;      // Never reduce a countdown below 1 minute
+  // "香" group: adjust the current incense; + extends, − shortens, keeping duration >= remaining
+  function adjustWork(sign) {
+    if (sign > 0) {
+      state.remaining += STEP;
+      state.duration += STEP;
+    } else {
+      state.remaining = Math.max(MIN_SEC, state.remaining - STEP);
+      state.duration = Math.max(state.remaining, state.duration - STEP);
+    }
     save();
-  });
+  }
+  // "息" group: while resting adjust the remaining rest; otherwise adjust the next rest length
+  function adjustRest(sign) {
+    if (state.resting) {
+      state.restRemaining = sign > 0
+        ? state.restRemaining + STEP
+        : Math.max(MIN_SEC, state.restRemaining - STEP);
+    } else {
+      REST_SEC = sign > 0 ? REST_SEC + STEP : Math.max(MIN_SEC, REST_SEC - STEP);
+    }
+    save();
+  }
+  function onAdjustClick(e) {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    switch (b.dataset.act) {
+      case "work+": adjustWork(1); break;
+      case "work-": adjustWork(-1); break;
+      case "rest+": adjustRest(1); break;
+      case "rest-": adjustRest(-1); break;
+    }
+  }
+  elAdjWork.addEventListener("click", onAdjustClick);
+  elAdjRest.addEventListener("click", onAdjustClick);
 
   // Tap the screen = light incense / pause
   document.getElementById("scene").addEventListener("click", toggle);
@@ -1122,7 +1227,7 @@
   applyTheme();
   applyTimeVisibility();
   applyPresetsVisibility();
-  elPhase.textContent = PRESETS[state.presetIdx].label.split("").join(" ");
+  renderUI();
   if (state.lit && !state.finished) { elReset.disabled = false; elHint.style.opacity = "0"; }
   if (state.finished || state.resting) { elReset.disabled = false; elHint.style.opacity = "0"; }
   if (state.finished && !state.resting) { elDone.classList.add("show"); }
