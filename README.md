@@ -2,7 +2,7 @@
 
 A minimalist focus timer built around the imagery of a burning incense stick. Light the incense, watch the smoke rise and the stick burn down, and complete one session of focus in a single mindful breath.
 
-The entire app is a single file, `index.html` — pure front-end, no build step, and no external dependencies (fonts are loaded from Google Fonts). Just open it and go.
+Pure front-end static files — no build step and no external dependencies (fonts are loaded from Google Fonts). Just open `index.html` and go. See [AGENTS.md](AGENTS.md) for the project layout.
 
 The day/night sunlight effect is inspired by https://sunlit.pages.dev/.
 

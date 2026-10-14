@@ -2,7 +2,7 @@
 
 以線香為意象的極簡專注計時 Web App。點一炷香，看煙起香盡，在一念之間完成一段專注。
 
-整個 App 是單一檔案 `index.html`，純前端、無需建置、無外部相依（字型透過 Google Fonts 載入），開啟即用。
+純前端靜態檔案，無需建置、無外部相依（字型透過 Google Fonts 載入），開啟 `index.html` 即用。專案結構請見 [AGENTS.md](AGENTS.md)。
 
 晝 / 夜的窗光特效靈感來自 https://sunlit.pages.dev/。
 

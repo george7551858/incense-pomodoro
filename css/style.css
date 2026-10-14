@@ -1,0 +1,622 @@
+/* 一炷香 · 蕃茄鐘 — styles (paper background, sunlit window light, UI chrome, night theme) */
+
+:root {
+  --paper-0: #efe7d6;
+  --paper-1: #e7dcc6;
+  --paper-2: #ddd0b6;
+  --ink: #46402f;
+  --ink-soft: rgba(70, 64, 47, 0.62);
+  --ink-faint: rgba(70, 64, 47, 0.32);
+  --hair: rgba(70, 64, 47, 0.16);
+  --serif: "Noto Serif TC", "Songti TC", "Songti SC", "STSong", serif;
+  /* sunlit day/night transition curve */
+  --timing-fn: cubic-bezier(0.455, 0.190, 0.000, 0.985);
+  /* Window light: warm sun (day) */
+  --bounce-light: #f5d7a6;
+  --blind-shadow: rgba(70, 55, 28, 0.55);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--paper-1);
+  color: var(--ink);
+  font-family: var(--serif);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Paper background: warm radial gradient + corner vignette */
+/* Register the three gradient colors as <color> typed properties so color interpolation is smooth and does not band */
+@property --bg-c0 { syntax: "<color>"; inherits: false; initial-value: #efe7d6; }
+@property --bg-c1 { syntax: "<color>"; inherits: false; initial-value: #e7dcc6; }
+@property --bg-c2 { syntax: "<color>"; inherits: false; initial-value: #ddd0b6; }
+#stage {
+  position: fixed;
+  inset: 0;
+  --bg-c0: #efe7d6;
+  --bg-c1: #e7dcc6;
+  --bg-c2: #ddd0b6;
+  background:
+    radial-gradient(120% 92% at 50% 38%, var(--bg-c0) 0%, var(--bg-c1) 50%, var(--bg-c2) 100%);
+  /* When no animation is playing: transition the color variables directly so it stays smooth in any case */
+  transition: --bg-c0 1.2s var(--timing-fn), --bg-c1 1.2s var(--timing-fn), --bg-c2 1.2s var(--timing-fn);
+  animation-duration: 0s;
+  animation-fill-mode: forwards;
+  animation-timing-function: linear;
+}
+
+/* Paper fiber texture (SVG feTurbulence) */
+#grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  transition: opacity 1.6s var(--timing-fn);
+}
+
+/* Soft corner vignette to focus the center */
+#vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(115% 80% at 50% 42%, rgba(0,0,0,0) 55%, rgba(60,48,28,0.10) 80%, rgba(48,38,22,0.22) 100%);
+  transition: background 1.6s var(--timing-fn);
+}
+
+/* ===== sunlit dappled window-light effect ===== */
+#sunlight {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+#sunlight .glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(309deg, var(--bounce-light), var(--bounce-light) 20%, transparent);
+  opacity: 0.42;
+  mix-blend-mode: soft-light;
+  transition: background 1.6s var(--timing-fn), opacity 1.6s var(--timing-fn);
+}
+#sunlight .glow-bounce {
+  position: absolute;
+  inset: 0;
+  bottom: 0;
+  background: linear-gradient(355deg, var(--bounce-light) 0%, transparent 30%, transparent 100%);
+  opacity: 0.4;
+  mix-blend-mode: soft-light;
+  transition: background 1.6s var(--timing-fn), opacity 1.6s var(--timing-fn);
+}
+/* Shadow group (leaves + blinds). Opacity lives on this flat, untransformed group so
+   overlapping leaf/blind shadows do not double-darken. */
+#sunlight .shade {
+  position: absolute;
+  inset: 0;
+  opacity: 0.10;
+  transition: opacity 3s ease;
+}
+/* Wind wobble (SVG displacement) is applied here, in screen space, AFTER the leaves are
+   projected by .perspective. Do NOT move the filter back onto .leaves: the matrix3d below
+   magnifies the leaves enormously near its vanishing line, and Firefox clips the filter
+   surface of filtered content under such a 3D transform, which shows up as a hard vertical
+   seam that sways with the leaves (viewport width > ~1041px). Chrome is unaffected. */
+#sunlight .wind {
+  position: absolute;
+  inset: 0;
+  filter: url(#wind);
+}
+/* The leaves and the blinds each get their own (identical) projected plane */
+#sunlight .perspective {
+  position: absolute;
+  top: -30vh;
+  right: 0;
+  width: 80vw;
+  height: 130vh;
+  transform-origin: top right;
+  transform-style: preserve-3d;
+  transition: transform 1.7s var(--timing-fn);
+  transform: matrix3d(0.7500, -0.0625, 0.0000, 0.0008,
+      0.0000, 1.0000, 0.0000, 0.0000,
+      0.0000, 0.0000, 1.0000, 0.0000,
+      0.0000, 0.0000, 0.0000, 1.0000);
+  /* Fade out on the left to blend seamlessly into the background */
+  -webkit-mask-image: linear-gradient(252deg, transparent 0%, transparent 36%, black 78%, black 100%);
+  mask-image: linear-gradient(252deg, transparent 0%, transparent 36%, black 78%, black 100%);
+}
+#sunlight .leaves {
+  position: absolute;
+  bottom: -20px;
+  right: -700px;
+  width: 1600px;
+  height: 1400px;
+  background-image: url("../assets/leaves.png");
+  background-size: cover;
+  background-repeat: no-repeat;
+  animation: billow 8s ease-in-out infinite;
+}
+#sunlight .blinds { position: relative; width: 100%; }
+#sunlight .shutter,
+#sunlight .bar { background-color: var(--blind-shadow); }
+#sunlight .shutters {
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  gap: 58px;
+  transition: gap 1.6s var(--timing-fn);
+}
+#sunlight .vertical {
+  top: 0;
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+}
+#sunlight .vertical > .bar { width: 5px; height: 100%; }
+#sunlight .shutter {
+  width: 100%;
+  height: 38px;
+  transition: height 1.6s var(--timing-fn);
+}
+
+/* sunlit: layered backdrop-filter blurs the blind edges, left side masked to fade out */
+#sunlight .progressive-blur {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+}
+#sunlight .progressive-blur > div {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  -webkit-mask-image: linear-gradient(252deg, transparent, transparent var(--stop1), black var(--stop2), black);
+  mask-image: linear-gradient(252deg, transparent, transparent var(--stop1), black var(--stop2), black);
+}
+#sunlight .progressive-blur > div:nth-child(1) {
+  --blur-amount: 6px;
+  --stop1: 0%;
+  --stop2: 0%;
+}
+#sunlight .progressive-blur > div:nth-child(2) {
+  --blur-amount: 12px;
+  --stop1: 40%;
+  --stop2: 80%;
+}
+#sunlight .progressive-blur > div:nth-child(3) {
+  --blur-amount: 48px;
+  --stop1: 40%;
+  --stop2: 70%;
+}
+#sunlight .progressive-blur > div:nth-child(4) {
+  --blur-amount: 96px;
+  --stop1: 70%;
+  --stop2: 80%;
+}
+
+/* sunlit style: background sunrise / sunset gradient (only animate color variables -> smooth, no banding) */
+@keyframes theme-sunrise {
+  0%   { --bg-c0: #1a1b21; --bg-c1: #101117; --bg-c2: #06070a; }
+  10%  { --bg-c0: #1e1a2e; --bg-c1: #16132b; --bg-c2: #0e0c18; }
+  35%  { --bg-c0: #b8c8d0; --bg-c1: #9fb3bf; --bg-c2: #8aa0ad; }
+  100% { --bg-c0: #efe7d6; --bg-c1: #e7dcc6; --bg-c2: #ddd0b6; }
+}
+@keyframes theme-sunset {
+  0%   { --bg-c0: #efe7d6; --bg-c1: #e7dcc6; --bg-c2: #ddd0b6; }
+  30%  { --bg-c0: #fde8b8; --bg-c1: #fccc83; --bg-c2: #e8b86a; }
+  60%  { --bg-c0: #e8924a; --bg-c1: #db7a2a; --bg-c2: #b85a18; }
+  90%  { --bg-c0: #1e1a2e; --bg-c1: #16132b; --bg-c2: #0e0c18; }
+  100% { --bg-c0: #1a1b21; --bg-c1: #101117; --bg-c2: #06070a; }
+}
+body.theme-animate-ready #stage {
+  animation-play-state: running;
+  animation-duration: 1s;
+  animation-name: theme-sunrise;
+}
+body.theme-animate-ready[data-theme="night"] #stage {
+  animation-duration: 1.7s;
+  animation-name: theme-sunset;
+}
+
+@keyframes billow {
+  0%   { transform: perspective(400px) rotateX(0deg) rotateY(0deg) scale(1); }
+  25%  { transform: perspective(400px) rotateX(1deg) rotateY(2deg) scale(1.02); }
+  50%  { transform: perspective(400px) rotateX(-4deg) rotateY(-2deg) scale(0.97); }
+  75%  { transform: perspective(400px) rotateX(1deg) rotateY(-1deg) scale(1.04); }
+  100% { transform: perspective(400px) rotateX(0deg) rotateY(0deg) scale(1); }
+}
+
+canvas#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Timer readout (hidden by default, shown only when the pomodoro button is pressed) */
+#readout {
+  position: fixed;
+  top: 13%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+#readout.visible { opacity: 1; }
+#time {
+  font-weight: 200;
+  font-size: clamp(56px, 11vw, 124px);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  transition: opacity 0.8s ease;
+}
+/* Pomodoro rest length / rest countdown: small red line under the main timer */
+#phase {
+  margin-top: 0.8em;
+  font-size: clamp(12px, 1.4vw, 15px);
+  letter-spacing: 0.12em;
+  text-indent: 0;
+  color: #c0392b;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  min-height: 1.2em;
+  line-height: 1;
+  transition:
+    font-size 0.9s cubic-bezier(.2,.8,.2,1),
+    letter-spacing 0.9s cubic-bezier(.2,.8,.2,1),
+    margin-top 0.9s cubic-bezier(.2,.8,.2,1),
+    opacity 0.8s ease;
+}
+/* While resting, the red countdown grows to match the main timer */
+#readout.resting #phase {
+  margin-top: 0.5em;
+  font-size: clamp(56px, 11vw, 124px);
+  letter-spacing: 0.06em;
+  font-weight: 200;
+}
+
+/* Control bar */
+#controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 0 20px 40px;
+  transition: opacity 1.1s ease;
+}
+#controls.dim { opacity: 0.22; }
+
+.presets {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: rgba(255, 252, 244, 0.34);
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  padding: 5px;
+  overflow: hidden;
+  max-height: 64px;
+  backdrop-filter: blur(3px);
+  transition: opacity 0.55s ease, max-height 0.55s ease,
+              padding 0.55s ease, margin 0.55s ease, border-color 0.55s ease;
+}
+/* Collapse the incense picker after lighting */
+.presets.gone {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+  border-color: transparent;
+  pointer-events: none;
+}
+.preset {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  padding: 9px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.3s ease, background 0.3s ease;
+  white-space: nowrap;
+}
+.preset:hover { color: var(--ink); }
+.preset[aria-pressed="true"] {
+  color: #3a3322;
+  background: rgba(255, 250, 240, 0.85);
+  box-shadow: 0 1px 2px rgba(60, 48, 28, 0.12);
+}
+.preset small {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-indent: 0.08em;
+  opacity: 0.62;
+  margin-top: 2px;
+  font-weight: 300;
+}
+
+/* 3 columns keep #ignite centered regardless of the side controls' widths */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+  max-width: 420px;
+  gap: 28px;
+}
+#reset {
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  letter-spacing: 0;
+  text-indent: 0;
+}
+#reset svg { width: 22px; height: 22px; }
+#adjWork { justify-self: start; }
+.btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  cursor: pointer;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  font-size: 14px;
+  font-weight: 300;
+  padding: 6px 4px;
+  transition: color 0.3s ease, opacity 0.3s ease;
+}
+.btn:hover { color: var(--ink); }
+.btn:disabled { opacity: 0.28; cursor: default; }
+
+.adjgrp { display: flex; align-items: center; gap: 4px; }
+.adjgrp[hidden] { display: none; }
+/* Pomodoro rest-time adjust: docked under the mode button at top-right */
+#adjRest {
+  position: fixed;
+  top: 74px;
+  right: 22px;
+  z-index: 8;
+}
+.btn.step {
+  font-size: 19px;
+  line-height: 1;
+  padding: 4px 7px;
+  letter-spacing: 0;
+  text-indent: 0;
+}
+
+#ignite {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid var(--hair);
+  background: rgba(255, 252, 244, 0.4);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  backdrop-filter: blur(3px);
+  transition: transform 0.4s cubic-bezier(.2,.8,.2,1), background 0.4s ease, box-shadow 0.4s ease;
+}
+#ignite:hover { transform: translateY(-2px); background: rgba(255,250,240,0.78); }
+#ignite svg { width: 24px; height: 24px; }
+
+/* Top-right: pomodoro button (show/hide time) */
+#timeToggle {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  z-index: 8;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--hair);
+  background: rgba(255, 252, 244, 0.4);
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+  transition: color 0.3s ease, background 0.3s ease, transform 0.4s cubic-bezier(.2,.8,.2,1);
+}
+#timeToggle:hover { background: rgba(255, 250, 240, 0.78); transform: translateY(-1px); }
+#timeToggle.on { color: #3a3322; background: rgba(255, 250, 240, 0.85); box-shadow: 0 1px 3px rgba(60,48,28,0.12); }
+/* Pomodoro: bright background (same as show-time) + red outline */
+#timeToggle.pomo { color: #c0392b; background: rgba(255, 250, 240, 0.85); box-shadow: 0 1px 3px rgba(60,48,28,0.12); }
+/* On hover preview of the next stage, slightly lower opacity to hint this is a "preview" */
+#timeToggle.preview svg { opacity: 0.6; }
+#timeToggle svg { width: 21px; height: 21px; transition: opacity 0.2s ease; }
+
+/* Burned-incense count (shown together with the time) */
+#tally {
+  position: fixed;
+  top: 34px;
+  left: 84px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  font-weight: 300;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+#tally.visible { opacity: 1; }
+#tally .dots { display: flex; gap: 6px; }
+#tally .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+/* Completion notice */
+#done {
+  position: fixed;
+  top: 13%;
+  left: 0; right: 0;
+  text-align: center;
+  z-index: 7;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+#done.show { opacity: 1; }
+#done .big {
+  font-size: clamp(40px, 8vw, 82px);
+  font-weight: 200;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--ink);
+}
+#done .sub {
+  margin-top: 0.9em;
+  font-size: clamp(12px, 1.5vw, 15px);
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: var(--ink-soft);
+  font-weight: 300;
+}
+
+#hint {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: 138px;
+  text-align: center;
+  z-index: 5;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  font-weight: 300;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+
+/* Bottom-left: night / day toggle */
+#themeToggle {
+  position: fixed;
+  left: 24px;
+  top: 22px;
+  z-index: 8;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--hair);
+  background: rgba(255, 252, 244, 0.4);
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+  transition: color 0.3s ease, background 0.3s ease, transform 0.4s ease;
+}
+#themeToggle:hover { color: var(--ink); transform: translateY(-1px); }
+#themeToggle svg { width: 19px; height: 19px; }
+
+/* ===== Night theme ===== */
+body[data-theme="night"] {
+  --paper-0: #16171c;
+  --paper-1: #101117;
+  --paper-2: #07080b;
+  --ink: #ece7d9;
+  --ink-soft: rgba(236, 231, 217, 0.6);
+  --ink-faint: rgba(236, 231, 217, 0.3);
+  --hair: rgba(236, 231, 217, 0.16);
+}
+body[data-theme="night"] #stage {
+  --bg-c0: #1a1b21;
+  --bg-c1: #101117;
+  --bg-c2: #06070a;
+}
+body[data-theme="night"] #grain { opacity: 0.16; mix-blend-mode: overlay; }
+body[data-theme="night"] #vignette {
+  background: radial-gradient(120% 85% at 50% 44%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.62) 100%);
+}
+body[data-theme="night"] .presets,
+body[data-theme="night"] #ignite,
+body[data-theme="night"] #timeToggle,
+body[data-theme="night"] #themeToggle { background: rgba(255, 255, 255, 0.05); }
+body[data-theme="night"] .preset[aria-pressed="true"] { background: rgba(255, 255, 255, 0.14); color: #f3eee2; }
+body[data-theme="night"] #timeToggle.on { background: rgba(255, 255, 255, 0.16); color: #f3eee2; }
+body[data-theme="night"] #timeToggle.pomo { background: rgba(255, 255, 255, 0.16); color: #e8634f; }
+
+/* Night: window light becomes cool moonlight, blind shadows deeper and wider */
+body[data-theme="night"] {
+  --bounce-light: #2a3d63;
+  --blind-shadow: rgba(2, 4, 10, 0.7);
+}
+body[data-theme="night"] #sunlight .glow { opacity: 0.5; mix-blend-mode: screen; }
+body[data-theme="night"] #sunlight .glow-bounce { opacity: 0.45; mix-blend-mode: screen; }
+body[data-theme="night"] #sunlight .shade { opacity: 0.34; }
+body[data-theme="night"] #sunlight .perspective {
+  transform: matrix3d(0.8333, 0.0833, 0.0000, 0.0003,
+      0.0000, 1.0000, 0.0000, 0.0000,
+      0.0000, 0.0000, 1.0000, 0.0000,
+      0.0000, 0.0000, 0.0000, 1.0000);
+}
+body[data-theme="night"] #sunlight .shutters { gap: 22px; }
+body[data-theme="night"] #sunlight .shutter { height: 74px; }
+
+/* Narrow/portrait screens: the 252deg mask only has enough span to fade out in landscape;
+   on narrow screens the transition gets compressed into a hard visible edge on the left.
+   Widen the perspective, loosen the mask transition, and soften the blur so the window light
+   casts in from the top-right and dissolves smoothly into the background */
+@media (max-width: 1280px) {
+  #sunlight .perspective {
+    width: 120vw;
+    -webkit-mask-image: linear-gradient(245deg, transparent 0%, transparent 18%, black 88%, black 100%);
+    mask-image: linear-gradient(245deg, transparent 0%, transparent 18%, black 88%, black 100%);
+  }
+  #sunlight .progressive-blur > div:nth-child(2) { --blur-amount: 6px;  --stop1: 15%; --stop2: 95%; }
+  #sunlight .progressive-blur > div:nth-child(3) { --blur-amount: 14px; --stop1: 30%; --stop2: 100%; }
+  #sunlight .progressive-blur > div:nth-child(4) { --blur-amount: 22px; --stop1: 55%; --stop2: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #sunlight .leaves { animation: none; }
+  body.theme-animate-ready #stage { animation: none !important; }
+}
+
+@media (max-width: 560px) {
+  .preset { padding: 8px 13px; font-size: 13px; }
+  .actions { gap: 20px; }
+  #themeToggle { top: 16px; left: 16px; }
+  #tally { top: 26px; left: 68px; }
+}

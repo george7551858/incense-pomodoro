@@ -1,10 +1,12 @@
 /* Incense Pomodoro — Service Worker (offline-first) */
-const VERSION = "incense-pomodoro-20260618T155115Z";
+const VERSION = "incense-pomodoro-20261014T025435Z";
 const CORE = [
   ".",
   "index.html",
-  "scene.js",
-  "leaves.png",
+  "css/style.css",
+  "js/app.js",
+  "js/scene.js",
+  "assets/leaves.png",
   "manifest.webmanifest",
   "icons/icon-192.png",
   "icons/icon-512.png",
