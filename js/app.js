@@ -22,7 +22,6 @@
     running: false,
     lit: false,        // Smokes once lit (keeps burning even when paused), goes out only when the incense is spent
     finished: false,
-    completed: 0,
     timeMode: 0,       // 0 none / 1 show time / 2 pomodoro (red, auto loop)
     resting: false,    // Pomodoro: rest after the incense is spent
     restRemaining: 0,
@@ -41,7 +40,6 @@
         running: state.running,
         lit: state.lit,
         finished: state.finished,
-        completed: state.completed,
         timeMode: state.timeMode,
         resting: state.resting,
         restRemaining: state.restRemaining,
@@ -61,7 +59,6 @@
       state.remaining = s.remaining ?? state.duration;
       state.lit = !!s.lit;
       state.finished = !!s.finished;
-      state.completed = s.completed ?? 0;
       // Backward compatible with the old showTime field
       state.timeMode = (s.timeMode != null) ? s.timeMode : (s.showTime ? 1 : 0);
       state.resting = !!s.resting;
@@ -140,17 +137,14 @@
   const elTime = document.getElementById("time");
   const elPhase = document.getElementById("phase");
   const elControls = document.getElementById("controls");
+  const elActions = document.querySelector(".actions");
   const elIgnite = document.getElementById("ignite");
   const elIgniteIcon = document.getElementById("igniteIcon");
   const elReset = document.getElementById("reset");
   const elAdjWork = document.getElementById("adjWork");
   const elAdjRest = document.getElementById("adjRest");
   const elPresets = document.getElementById("presets");
-  const elDone = document.getElementById("done");
-  const elHint = document.getElementById("hint");
-  const elDots = document.getElementById("dots");
   const elTimeToggle = document.getElementById("timeToggle");
-  const elTally = document.getElementById("tally");
   const elThemeToggle = document.getElementById("themeToggle");
   const elThemeIcon = document.getElementById("themeIcon");
 
@@ -186,10 +180,7 @@
 
   function applyTimeVisibility() {
     const timed = state.timeMode >= 1;
-    // The completion notice (#done) and readout (#readout) share top:13%; hide the readout when spent to avoid overlap
-    const doneShown = state.finished && !state.resting;
-    elReadout.classList.toggle("visible", timed && !doneShown);
-    elTally.classList.toggle("visible", timed);
+    elReadout.classList.toggle("visible", timed);
     // Time adjust (−/+) only when the time is shown; rest adjust only in pomodoro
     elAdjWork.hidden = !timed;
     elAdjRest.hidden = state.timeMode !== 2;
@@ -212,11 +203,15 @@
   }
 
   let dimTimer = null;
+  function setDim(dimmed) {
+    elControls.classList.toggle("dim", dimmed);
+    elActions.classList.toggle("dim", dimmed);
+  }
   function scheduleDim() {
     clearTimeout(dimTimer);
-    elControls.classList.remove("dim");
+    setDim(false);
     if (state.running) {
-      dimTimer = setTimeout(() => elControls.classList.add("dim"), 2600);
+      dimTimer = setTimeout(() => setDim(true), 2600);
     }
   }
 
@@ -228,22 +223,6 @@
     } else {
       elTime.textContent = fmt(state.remaining);
       elPhase.textContent = state.timeMode === 2 ? fmt(REST_SEC) : "";
-    }
-  }
-
-  function renderDots() {
-    elDots.innerHTML = "";
-    const n = Math.min(state.completed, 8);
-    for (let i = 0; i < n; i++) {
-      const d = document.createElement("span");
-      d.className = "dot";
-      elDots.appendChild(d);
-    }
-    if (state.completed > 8) {
-      const more = document.createElement("span");
-      more.textContent = "+" + (state.completed - 8);
-      more.style.fontSize = "11px";
-      elDots.appendChild(more);
     }
   }
 
@@ -271,14 +250,12 @@
     state.finished = false;
     state.resting = false;
     IncenseScene.reset();
-    elDone.classList.remove("show");
     [...elPresets.children].forEach((c, idx) =>
       c.setAttribute("aria-pressed", String(idx === i)));
     updateIgniteIcon();
     applyPresetsVisibility();
-    applyTimeVisibility();   // After reset, re-show the readout if the timer is on
+    applyTimeVisibility();
     elReset.disabled = true;
-    elHint.style.opacity = "1";
     renderUI();
     scheduleDim();
     save();
@@ -306,8 +283,6 @@
     if (!state.lit) state.lit = true;
     state.running = true;
     elReset.disabled = false;
-    elHint.style.opacity = "0";
-    elDone.classList.remove("show");
     updateIgniteIcon();
     applyPresetsVisibility();
     scheduleDim();
@@ -316,7 +291,7 @@
   function pause() {
     state.running = false;
     updateIgniteIcon();
-    elControls.classList.remove("dim");
+    setDim(false);
     clearTimeout(dimTimer);
     save();
   }
@@ -330,18 +305,14 @@
   function finish() {
     state.running = false;
     state.finished = true;
-    state.completed += 1;
-    renderDots();
     updateIgniteIcon();
     elReset.disabled = false;
-    elControls.classList.remove("dim");
+    setDim(false);
     clearTimeout(dimTimer);
     if (state.timeMode === 2) {
       startRest();           // Pomodoro: auto-enter rest
-    } else {
-      elDone.classList.add("show");
     }
-    applyTimeVisibility();   // Hide the readout when spent to avoid overlapping the completion notice
+    applyTimeVisibility();
     save();
   }
 
@@ -349,7 +320,6 @@
   function startRest() {
     state.resting = true;
     state.restRemaining = REST_SEC;
-    elDone.classList.remove("show");
     save();
   }
 
@@ -361,11 +331,10 @@
     state.lit = true;
     state.running = true;
     IncenseScene.reset();
-    elDone.classList.remove("show");
     elReset.disabled = false;
     updateIgniteIcon();
     applyPresetsVisibility();
-    applyTimeVisibility();   // Relight after rest: restore the readout display
+    applyTimeVisibility();
     save();
   }
 
@@ -377,7 +346,6 @@
     } else if (state.resting) {
       // Leave pomodoro -> cancel rest, return to the spent state
       state.resting = false;
-      if (state.finished) elDone.classList.add("show");
     }
     applyTimeVisibility();
     save();
@@ -436,9 +404,6 @@
   elAdjWork.addEventListener("click", onAdjustClick);
   elAdjRest.addEventListener("click", onAdjustClick);
 
-  // Tap the screen = light incense / pause
-  document.getElementById("scene").addEventListener("click", toggle);
-  document.getElementById("stage").addEventListener("click", toggle);
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space") { e.preventDefault(); toggle(); }
   });
@@ -479,7 +444,7 @@
         lit: state.lit, running: state.running, finished: state.finished,
         resting: state.resting,
         remaining: Math.ceil(state.remaining), restRemaining: Math.ceil(state.restRemaining),
-        duration: state.duration, completed: state.completed, timeScale,
+        duration: state.duration, timeScale,
         REST_SEC,
       };
       console.table(s);
@@ -491,15 +456,14 @@
   IncenseScene.init(document.getElementById("scene"));
   load();
   buildPresets();
-  renderDots();
   updateIgniteIcon();
   applyTheme();
   applyTimeVisibility();
   applyPresetsVisibility();
   renderUI();
-  if (state.lit && !state.finished) { elReset.disabled = false; elHint.style.opacity = "0"; }
-  if (state.finished || state.resting) { elReset.disabled = false; elHint.style.opacity = "0"; }
-  if (state.finished && !state.resting) { elDone.classList.add("show"); }
+  if ((state.lit && !state.finished) || state.finished || state.resting) {
+    elReset.disabled = false;
+  }
   scheduleDim();
   requestAnimationFrame(frame);
 })();

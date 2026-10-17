@@ -317,27 +317,32 @@
   }
 
   // Paint fallen ash segments and fine powder around a stick's base on the sand surface.
-  function drawStickFallenAsh(x, fullPasteLen, consumedLen, P, seed, thin) {
+  // `tiltRad` tilts the trajectory so ash falling from an angled 線香 lands along its lean.
+  function drawStickFallenAsh(x, fullPasteLen, consumedLen, P, seed, thin, tiltRad) {
     if (consumedLen <= 0.5) return;
     const breaks = stickBreaks(fullPasteLen, seed, thin);
     const lw = thin ? 0.72 : 1.0;
     const sw = 3.2 * lw;
     const sandRx = 62, sandRy = 5.4, sandY = baseY - 0.8;
+    const sinA = Math.sin(tiltRad || 0);
 
     ctx.save();
     for (let i = 1; i < breaks.length; i++) {
       if (breaks[i] > consumedLen) break;
       const R = rng(seed * 31 + i * 17);
       const segLen = breaks[i] - breaks[i - 1];
+      // Horizontal offset of the stick at the height where this ash segment broke off
+      const remAtBreak = Math.max(0, fullPasteLen - (breaks[i - 1] + breaks[i]) * 0.5);
+      const dropCenterX = x + remAtBreak * sinA * 0.88;
       // When a tall ash segment drops from above, it breaks into 2-3 shorter pieces on impact
       const pieces = segLen > 26 * lw && R() < 0.65 ? 3 : 2;
       for (let j = 0; j < pieces; j++) {
-        const spread = (4 + R() * 22) * (R() < 0.5 ? -1 : 1) + (R() - 0.5) * 6;
-        const fx = Math.max(cx - sandRx + 4, Math.min(cx + sandRx - 4, x + spread));
+        const spread = (thin ? 2 + R() * 14 : 4 + R() * 22) * (R() < 0.5 ? -1 : 1) + (R() - 0.5) * 5;
+        const fx = Math.max(cx - sandRx + 4, Math.min(cx + sandRx - 4, dropCenterX + spread));
         const maxRy = sandRy * Math.sqrt(Math.max(0, 1 - ((fx - cx) / sandRx) ** 2));
         const fy = sandY + (R() * 2 - 0.7) * maxRy * 0.78;
         const L = Math.min((segLen / pieces) * 0.45, 7.5 * lw) * (0.45 + 0.55 * R());
-        const ang = (R() - 0.5) * 0.65;
+        const ang = (R() - 0.5) * 0.65 + (tiltRad || 0) * 0.25;
         const bend = (R() - 0.5) * 1.6;
         const w = sw * (0.48 + 0.24 * R());
         const path = () => {
@@ -357,7 +362,7 @@
       // Fine ash dust around the fallen pieces
       ctx.fillStyle = P.ash;
       for (let j = 0; j < 4; j++) {
-        const dx = Math.max(cx - sandRx + 3, Math.min(cx + sandRx - 3, x + (R() - 0.5) * 44));
+        const dx = Math.max(cx - sandRx + 3, Math.min(cx + sandRx - 3, dropCenterX + (R() - 0.5) * (thin ? 28 : 44)));
         const dy = sandY + (R() - 0.45) * sandRy * 1.3;
         ctx.fillRect(dx, dy, 0.6 + R() * 0.8, 0.5 + R() * 0.4);
       }
@@ -365,19 +370,154 @@
     ctx.restore();
   }
 
-  // Paint one upright stick:
-  // - Contact depression + shadow where the stick enters the sand
+  // Paint the small brass/bronze 線香座 (gourd/drop-shaped incense stand) sitting in the sand.
+  // Drawn in two passes (`drawBase` before the stick, `drawRim` after the stick) so the stick
+  // visibly enters the angled socket hole at the top of the holder.
+  function makeThreadHolder(x, y, tiltRad, night) {
+    const P = palette(night);
+    const bodyRx = 5.4;
+    const bodyH = 6.2;
+    const topY = y - bodyH;
+    // Slight horizontal shift of the top neck toward the lean direction
+    const neckX = x + Math.sin(tiltRad) * 1.1;
+    const neckRx = 2.6;
+
+    return {
+      // Where the bottom of the stick sits inside the holder's socket
+      pivotX: neckX,
+      pivotY: topY + 0.6,
+      drawBase() {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+
+        // Soft contact shadow on the sand surface
+        ctx.fillStyle = P.shadow;
+        ctx.beginPath();
+        ctx.ellipse(x + 1.0, y + 0.6, bodyRx * 1.45, 2.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Subtle sand rim pressed around the base
+        ctx.strokeStyle = night ? "rgba(35,30,22,0.55)" : "rgba(115,98,70,0.45)";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 0.2, bodyRx + 0.9, 1.6, 0, 0, Math.PI);
+        ctx.stroke();
+
+        // Gourd/drop-shaped brass body silhouette
+        const mg = ctx.createLinearGradient(x - bodyRx, 0, x + bodyRx, 0);
+        if (night) {
+          mg.addColorStop(0.0, "#3b3224");
+          mg.addColorStop(0.28, "#9e8b66");
+          mg.addColorStop(0.55, "#746447");
+          mg.addColorStop(0.85, "#473d2b");
+          mg.addColorStop(1.0, "#2d261b");
+        } else {
+          mg.addColorStop(0.0, "#4f4330");
+          mg.addColorStop(0.28, "#b8a379");
+          mg.addColorStop(0.55, "#877553");
+          mg.addColorStop(0.85, "#594c36");
+          mg.addColorStop(1.0, "#3d3324");
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(neckX - neckRx, topY);
+        ctx.bezierCurveTo(
+          x - bodyRx * 1.12, topY + bodyH * 0.35,
+          x - bodyRx * 1.05, y - bodyH * 0.12,
+          x - bodyRx * 0.82, y
+        );
+        ctx.ellipse(x, y, bodyRx * 0.82, 1.35, 0, Math.PI, 0, true);
+        ctx.bezierCurveTo(
+          x + bodyRx * 1.05, y - bodyH * 0.12,
+          x + bodyRx * 1.12, topY + bodyH * 0.35,
+          neckX + neckRx, topY
+        );
+        ctx.closePath();
+        ctx.fillStyle = mg;
+        ctx.fill();
+
+        // Ambient shading near the bottom of the brass stand
+        ctx.save();
+        ctx.clip();
+        const ao = ctx.createLinearGradient(0, topY + bodyH * 0.4, 0, y + 2);
+        ao.addColorStop(0, "rgba(0,0,0,0)");
+        ao.addColorStop(1, "rgba(0,0,0,0.35)");
+        ctx.fillStyle = ao;
+        ctx.fillRect(x - bodyRx - 2, topY, bodyRx * 2 + 4, bodyH + 3);
+        ctx.restore();
+
+        // Specular highlight curve on the upper-left belly of the gourd
+        ctx.strokeStyle = night ? "rgba(235,218,182,0.38)" : "rgba(250,238,208,0.52)";
+        ctx.lineWidth = 0.75;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(neckX - neckRx + 0.7, topY + 0.8);
+        ctx.quadraticCurveTo(x - bodyRx * 0.82, topY + bodyH * 0.48, x - bodyRx * 0.55, y - 0.8);
+        ctx.stroke();
+
+        // Top flat rim of the neck + dark socket hole (tilted perpendicular to the stick)
+        ctx.save();
+        ctx.translate(neckX, topY);
+        ctx.rotate(tiltRad * 0.55);
+        ctx.fillStyle = night ? "#7f6e50" : "#968360";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, neckRx, 0.95, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = night ? "#18120d" : "#261c14";
+        ctx.beginPath();
+        ctx.ellipse(0, 0.1, neckRx * 0.58, 0.58, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.restore();
+      },
+      // Front lip of the brass neck drawn over the base of the stick so it looks inserted inside
+      drawRim(litAndFinished) {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.translate(neckX, topY);
+        ctx.rotate(tiltRad * 0.55);
+
+        if (litAndFinished) {
+          // A tiny pinch of spent grey ash resting in the socket when the 線香 finishes burning
+          ctx.fillStyle = P.ash;
+          ctx.beginPath();
+          ctx.ellipse(0, -0.1, neckRx * 0.52, 0.55, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = night ? "#8d7b59" : "#a6926c";
+        ctx.lineWidth = 0.85;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, neckRx, 0.95, 0, 0.08, Math.PI - 0.08, false);
+        ctx.stroke();
+
+        ctx.strokeStyle = night ? "rgba(235,218,182,0.45)" : "rgba(250,238,208,0.6)";
+        ctx.lineWidth = 0.45;
+        ctx.beginPath();
+        ctx.ellipse(0, -0.15, neckRx * 0.92, 0.85, 0, 0.25, Math.PI * 0.55, false);
+        ctx.stroke();
+        ctx.restore();
+      },
+    };
+  }
+
+  // Paint one stick:
+  // - Contact depression + shadow where a footed stick enters the sand (or socket entry for 線香)
   // - Fixed dark-red 香腳 (dyed bamboo foot) of height `footLen` with cylindrical shading
   // - Unburned incense paste of height `pasteLen` with cylindrical shading, powder grain,
   //   a tiny exposed bamboo core tip at the top, and a charred band under the ember
   // - Overhanging curved ash column above the ember that grows until it reaches the next break
   //   point and drops into the bowl (when finished, a tiny remnant ash cap stays on the collar)
-  function paintStick(x, footLen, pasteLen, fullPasteLen, view, phase, seed) {
+  // Supports optional `baseYOverride` and `tiltRad` (radians, clockwise) for tilted 線香 on a stand.
+  function paintStick(x, footLen, pasteLen, fullPasteLen, view, phase, seed, baseYOverride, tiltRad) {
     const night = view.theme === "night";
     const P = palette(night);
     const t = view.simT;
-    const footTopY = baseY - footLen;          // where the paste begins
-    const tipY = footTopY - pasteLen;          // current burning front
+    const bY = baseYOverride !== undefined ? baseYOverride : baseY;
+    const tilt = tiltRad || 0;
+    const footTopY = bY - footLen;             // where the paste begins (in local upright coords)
+    const tipY = footTopY - pasteLen;          // current burning front (in local upright coords)
     const lw = view.thin ? 0.72 : 1.0;         // width scale (thin = 線香)
     const footW = 2.4 * lw;
     const pasteW = 3.5 * lw;
@@ -386,15 +526,23 @@
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
 
-    // 1. Small sand dimple / contact shadow at the insertion point
-    ctx.fillStyle = P.shadow;
-    ctx.beginPath();
-    ctx.ellipse(x + 0.8, baseY + 0.3, footW * 1.6, 1.3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = night ? "rgba(18,14,10,0.65)" : "rgba(78,62,40,0.45)";
-    ctx.beginPath();
-    ctx.ellipse(x, baseY, footW * 0.85, 0.85, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (tilt !== 0) {
+      ctx.translate(x, bY);
+      ctx.rotate(tilt);
+      ctx.translate(-x, -bY);
+    }
+
+    // 1. Small sand dimple / contact shadow at the insertion point (only when planted directly in sand)
+    if (footLen > 0) {
+      ctx.fillStyle = P.shadow;
+      ctx.beginPath();
+      ctx.ellipse(x + 0.8, bY + 0.3, footW * 1.6, 1.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = night ? "rgba(18,14,10,0.65)" : "rgba(78,62,40,0.45)";
+      ctx.beginPath();
+      ctx.ellipse(x, bY, footW * 0.85, 0.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // 2. 香腳: dark-red dyed bamboo foot (unburned)
     if (footLen > 0) {
@@ -405,15 +553,15 @@
       ctx.strokeStyle = P.footHi;
       ctx.lineWidth = 0.55;
       ctx.beginPath();
-      ctx.moveTo(x - r + 0.35, baseY);
+      ctx.moveTo(x - r + 0.35, bY);
       ctx.lineTo(x - r + 0.35, footTopY);
       ctx.stroke();
       // Subtle ambient darkening right where the foot meets the sand
-      const ao = ctx.createLinearGradient(0, baseY - 10, 0, baseY);
+      const ao = ctx.createLinearGradient(0, bY - 10, 0, bY);
       ao.addColorStop(0, "rgba(0,0,0,0)");
       ao.addColorStop(1, "rgba(0,0,0,0.32)");
       ctx.fillStyle = ao;
-      ctx.fillRect(x - r, baseY - 10, footW, 10);
+      ctx.fillRect(x - r, bY - 10, footW, 10);
     }
 
     // 3. Unburned incense paste body (wider than the bamboo foot -> distinct shoulder)
@@ -441,12 +589,13 @@
       ctx.fillRect(x - r - 1, bodyTopY - 2, pasteW + 2, pasteLen + 6);
       ctx.globalAlpha = 1;
 
-      // Subtle shadow at the bottom shoulder of the paste
-      const sho = ctx.createLinearGradient(0, footTopY - 4, 0, footTopY + r);
+      // Subtle shadow at the bottom shoulder of the paste (or socket insertion shading for 線香)
+      const shoH = footLen > 0 ? 4 : 6;
+      const sho = ctx.createLinearGradient(0, footTopY - shoH, 0, footTopY + r);
       sho.addColorStop(0, "rgba(0,0,0,0)");
-      sho.addColorStop(1, "rgba(0,0,0,0.28)");
+      sho.addColorStop(1, footLen > 0 ? "rgba(0,0,0,0.28)" : "rgba(0,0,0,0.38)");
       ctx.fillStyle = sho;
-      ctx.fillRect(x - r - 1, footTopY - 4, pasteW + 2, 5 + r);
+      ctx.fillRect(x - r - 1, footTopY - shoH, pasteW + 2, shoH + 1 + r);
 
       // Charred black-brown collar just below the burning ember
       if (view.lit) {
@@ -501,8 +650,9 @@
       const ashLen = Math.min(22 * lw, rawHold * 0.68);
 
       const R = rng(seed * 13 + Math.round(lastBreak * 10));
-      const curlDir = R() < 0.5 ? -1 : 1;
-      const maxBend = curlDir * (0.4 + Math.pow(ashLen / (16 * lw), 1.65) * 3.8 * lw);
+      // When tilted, gravity pulls the overhanging ash slightly toward the lean direction (+1)
+      const curlDir = tilt !== 0 ? (R() < 0.78 ? 1 : -1) : (R() < 0.5 ? -1 : 1);
+      const maxBend = curlDir * (0.4 + Math.pow(ashLen / (16 * lw), 1.65) * 3.8 * lw) + Math.sin(tilt) * (ashLen * 0.14);
       const sway = Math.sin(t * 1.1 + phase) * 0.35 * (ashLen / (14 * lw));
 
       if (ashLen > 0.8) {
@@ -564,7 +714,10 @@
       ctx.ellipse(x, tipY + 0.6, pasteW * 0.52, 1.3 * lw, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
-      maybeSpark(x, tipY, view.running);
+      // Compute world coordinates of the burning tip for spark emission
+      const worldTipX = x + (bY - tipY) * Math.sin(tilt);
+      const worldTipY = bY - (bY - tipY) * Math.cos(tilt);
+      maybeSpark(worldTipX, worldTipY, view.running);
     } else if (view.lit && view.finished && footLen > 0) {
       // Burnt out down to the 香腳: a tiny charred collar and a pinch of grey ash at the top of the foot
       const r = footW * 0.55;
@@ -643,19 +796,44 @@
   //   draw():  paints the incense (called after smoke so it sits on top)
   // Geometry is computed up-front so the smoke sources match exactly what gets drawn.
 
-  // 線香 (no foot) / 一炷香 (dark-red 香腳): a single upright stick, paste shortening with progress
+  // 線香 (coreless, tilted ~10 deg in a small brass 線香座) / 一炷香 (upright stick with dark-red 香腳)
+  const THREAD_TILT = (10 * Math.PI) / 180;
   function stickGeo(view) {
     const totalFull = maxStickLen * view.lenScale;
     const hasFoot = !view.thin;                         // 線香 is a solid coreless stick -> no foot
     const { footLen, pasteLen, fullPasteLen, tipY } = stickParts(totalFull, view.progress, hasFoot);
     const drawn = pasteLen >= 0.8 || footLen > 0;
     const seed = view.thin ? 109 : 211;
+    const night = view.theme === "night";
+
+    if (view.thin) {
+      const tilt = THREAD_TILT;
+      // Shift the stand slightly left of centre so the tilted stick stays visually balanced in the bowl
+      const standX = cx - 9;
+      const standY = baseY + 0.5;
+      const holder = makeThreadHolder(standX, standY, tilt, night);
+      const tipX = holder.pivotX + pasteLen * Math.sin(tilt);
+      const tipYWorld = holder.pivotY - pasteLen * Math.cos(tilt);
+      return {
+        sources: pasteLen >= 0.8 ? [{ x: tipX, y: tipYWorld }] : [],
+        draw() {
+          if (view.lit) {
+            const P = palette(night);
+            drawStickFallenAsh(holder.pivotX, fullPasteLen, fullPasteLen - pasteLen, P, seed, true, tilt);
+          }
+          holder.drawBase();
+          if (drawn) paintStick(holder.pivotX, 0, pasteLen, fullPasteLen, view, 0, seed, holder.pivotY, tilt);
+          holder.drawRim(view.lit && view.finished);
+        },
+      };
+    }
+
     return {
       sources: pasteLen >= 0.8 ? [{ x: cx, y: tipY }] : [],
       draw() {
         if (view.lit) {
-          const P = palette(view.theme === "night");
-          drawStickFallenAsh(cx, fullPasteLen, fullPasteLen - pasteLen, P, seed, view.thin);
+          const P = palette(night);
+          drawStickFallenAsh(cx, fullPasteLen, fullPasteLen - pasteLen, P, seed, false, 0);
         }
         if (drawn) paintStick(cx, footLen, pasteLen, fullPasteLen, view, 0, seed);
       },
